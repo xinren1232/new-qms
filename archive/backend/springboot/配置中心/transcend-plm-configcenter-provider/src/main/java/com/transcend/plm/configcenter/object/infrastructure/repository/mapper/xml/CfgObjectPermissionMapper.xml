@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.CfgObjectPermissionMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectPermissionPo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="obj_bid" jdbcType="VARCHAR" property="objBid"/>
+        <result column="base_model" jdbcType="VARCHAR" property="baseModel"/>
+        <result column="role_type" jdbcType="TINYINT" property="roleType"/>
+        <result column="role_code" jdbcType="VARCHAR" property="roleCode"/>
+        <result column="lc_state_code" jdbcType="VARCHAR" property="lcStateCode"/>
+        <result column="operations" typeHandler="com.transcend.plm.configcenter.common.tools.CommaTypeHandler" property="operations"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+    auth_proj.id as id, auth_proj.bid as bid, auth_proj.obj_bid as obj_bid,
+    auth_proj.base_model as base_model, auth_proj.role_type as role_type, auth_proj.role_code as role_code,
+    auth_proj.lc_state_code as lc_state_code, auth_proj.operations as operations,
+    auth_proj.model_code as model_code, auth_proj.tenant_id as tenant_id,
+    auth_proj.created_time as created_time, auth_proj.updated_time as updated_time,
+    auth_proj.created_by as created_by, auth_proj.updated_by as updated_by
+    </sql>
+
+    <select id="findByObjBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_permission auth_proj
+        where auth_proj.obj_bid = #{objBid,jdbcType=VARCHAR}
+    </select>
+
+    <select id="findByCondition" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_permission auth_proj
+        where 1 =1
+        <if test="objBid != null and objBid != ''">
+            and auth_proj.obj_bid = #{objBid,jdbcType=VARCHAR}
+        </if>
+        <if test="baseModel != null and baseModel != ''">
+            and auth_proj.base_model = #{baseModel,jdbcType=VARCHAR}
+        </if>
+        <if test="roleType != null and roleType != ''">
+            and auth_proj.role_type = #{roleType,jdbcType=TINYINT}
+        </if>
+        <if test="lcStateCode != null and lcStateCode != ''">
+            and ( auth_proj.lc_state_code = #{lcStateCode,jdbcType=VARCHAR} OR
+            auth_proj.lc_state_code = 'ALL')
+        </if>
+        <if test="objBids != null and objBids.size()>0">
+            and auth_proj.obj_bid IN (
+            <foreach collection="objBids" item="objBid" separator=",">
+                #{objBid}
+            </foreach>
+            )
+        </if>
+         <if test="baseModels != null and baseModels.size()>0">
+            and auth_proj.base_model IN (
+            <foreach collection="baseModels" item="baseModel1" separator=",">
+                #{baseModel1}
+            </foreach>
+            )
+        </if>
+        <if test="roleCodes != null and roleCodes.size()>0">
+            and auth_proj.role_code IN (
+            <foreach collection="roleCodes" item="roleCode" separator=",">
+                #{roleCode}
+            </foreach>
+            )
+        </if>
+        <if test="likeOperation != null and likeOperation != ''">
+            and auth_proj.operations LIKE concat(concat('%', #{likeOperation},'%'))
+        </if>
+        order by auth_proj.updated_time desc
+    </select>
+
+    <select id="getByObjBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_permission auth_proj
+        where auth_proj.obj_bid = #{objBid,jdbcType=VARCHAR}
+        LIMIT 1
+    </select>
+
+    <delete id="logicalDeleteByBids">
+        delete from cfg_object_permission
+        where bid in (
+        <foreach collection="bids" item="bid" separator=",">
+            #{bid}
+        </foreach>
+        )
+    </delete>
+
+    <delete id="deleteAuthByList">
+        delete from cfg_object_permission
+        where model_code in
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </delete>
+
+    <insert id="bulkInsert">
+        insert into cfg_object_permission (
+        id, bid, obj_bid,
+        base_model, role_type,
+        role_code, lc_state_code, operations,
+        model_code, created_time,
+        updated_time, created_by, updated_by,
+        tenant_id
+        )
+        values
+        <foreach collection="list" separator="," item="item">
+            (#{item.id,jdbcType=INTEGER}, #{item.bid,jdbcType=VARCHAR}, #{item.objBid,jdbcType=VARCHAR},
+            #{item.baseModel,jdbcType=VARCHAR},#{item.roleType,jdbcType=TINYINT},
+            #{item.roleCode,jdbcType=VARCHAR}, #{item.lcStateCode,jdbcType=VARCHAR},
+            #{item.operations,typeHandler=com.transcend.plm.configcenter.common.tools.CommaTypeHandler},
+            #{item.modelCode,jdbcType=VARCHAR},
+            #{item.createdTime,jdbcType=TIMESTAMP},
+            #{item.updatedTime,jdbcType=TIMESTAMP}, #{item.createdBy,jdbcType=VARCHAR},
+            #{item.updatedBy,jdbcType=VARCHAR},
+            #{item.tenantId,jdbcType=VARCHAR})
+        </foreach>
+    </insert>
+
+    <update id="bulkUpdateByBid">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE `cfg_object_permission`
+            SET
+            `obj_bid` = #{item.objBid,jdbcType=VARCHAR},
+            `base_model` = #{item.baseModel,jdbcType=VARCHAR},
+            `role_type` = #{item.roleType,jdbcType=TINYINT},
+            `role_code` = #{item.roleCode,jdbcType=VARCHAR},
+            `lc_state_code` = #{item.lcStateCode,jdbcType=VARCHAR},
+            `operations` = #{item.operations,jdbcType=VARCHAR}
+            WHERE
+            `bid` = #{item.bid,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+
+    <select id="listInModelCode" resultMap="BaseResultMap">
+        SELECT
+        id, bid, obj_bid,
+        base_model, role_type,
+        role_code, lc_state_code, operations,
+        model_code, tenant_id, created_time,
+        updated_time, created_by, updated_by
+        FROM
+        cfg_object_permission
+        WHERE
+        model_code IN
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+        AND delete_flag = 0
+        ORDER BY model_code
+    </select>
+
+    <select id="listByRoleCodeAndModelCode" resultMap="BaseResultMap">
+        SELECT
+        id, bid, obj_bid,
+        base_model, role_type,
+        role_code, lc_state_code, operations,
+        model_code, tenant_id, created_time,
+        updated_time, created_by, updated_by
+        FROM
+        cfg_object_permission WHERE delete_flag = 0
+         and model_code = #{modelCode} and role_code IN
+        <foreach collection="roleCodes" item="roleCode" separator="," open="(" close=")">
+            #{roleCode}
+        </foreach>
+    </select>
+
+    <select id="findByModelCode" resultMap="BaseResultMap">
+        SELECT
+        id, bid, obj_bid,
+        base_model, role_type,
+        role_code, lc_state_code, operations,
+        model_code, tenant_id, created_time,
+        updated_time, created_by, updated_by
+        FROM
+        cfg_object_permission
+        WHERE
+        role_type = #{roleType,jdbcType=TINYINT}
+        <if test="sysRoleSet != null and sysRoleSet.size()>0">
+            AND role_code IN
+            <foreach collection="sysRoleSet" item="roleCode" separator="," open="(" close=")">
+                #{roleCode}
+            </foreach>
+        </if>
+        <if test="modelCodes != null and modelCodes.size()>0">
+            AND (
+            <foreach collection="modelCodes" item="modelCode" separator="OR">
+                ( lc_state_code = #{lcCode,jdbcType=VARCHAR} AND model_code = #{modelCode,jdbcType=VARCHAR} ) OR
+                ( lc_state_code = 'ALL' AND model_code = #{modelCode,jdbcType=VARCHAR} )
+            </foreach>
+            )
+        </if>
+        AND delete_flag = 0
+    </select>
+    <select id="listBidByModelCode" resultType="java.lang.String">
+        select bid from cfg_object_permission auth_proj
+        where auth_proj.model_code = #{objBid,jdbcType=VARCHAR}
+    </select>
+
+</mapper>

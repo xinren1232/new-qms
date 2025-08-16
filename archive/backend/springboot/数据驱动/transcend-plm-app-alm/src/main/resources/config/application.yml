@@ -1,0 +1,65 @@
+server:
+  port: ${server_port:8082}
+  
+# json日期时间格式化
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss       #日期格式化
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  cache:
+    redis:
+      enable: true
+      time-to-live: 600s
+      cache-null-values: false
+  aop:
+    proxy-target-class: true
+    expose-proxy: true
+
+#mybatis-plus
+mybatis-plus:
+  mapper-locations: classpath*:**/mapper/**/*.xml,classpath*:**/dao/**/*.xml
+  #实体扫描，多个package用逗号或者分号分隔
+  type-aliases-package: com.transcend.plm.datadriven.**.infrastructure.**.repository.po
+  type-enums-package: com.transcend.plm.datadriven.common.enums
+  global-config:
+    db-config:
+      id-type: ASSIGN_UUID   #AUTO
+      table-prefix: 
+      logic-delete-field: deleteFlag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    #database-id: 0
+  extends:
+    page-limit: 500
+    overflow: false
+    auto-routing: false
+    meta-object-handler: true
+    meta-props:
+      create-time: createdTime  #createTime
+      create-user: createdBy    #createUser
+      update-time: updatedTime  #updateTime
+      update-user: updatedBy    #updateUser
+      
+tr:
+  exception:
+    print:
+      enabled: true
+# 任务调度模块配置
+  powerjob:
+    worker:
+      port: 25535
+      app-name: ${spring.application.name}
+      max-appended-wf-context-length: 4096
+      max-result-length: 4096
+      server-address: 10.250.112.66:7700
+      store-strategy: disk
+      enabled: true

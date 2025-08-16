@@ -1,0 +1,109 @@
+# Alertmanager配置文件
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'qms-ai-alerts@company.com'
+  smtp_auth_username: 'alerts@company.com'
+  smtp_auth_password: 'your_email_password'
+
+# 路由配置
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+  routes:
+    # 严重告警立即发送
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+    
+    # 警告级别告警
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 30m
+    
+    # 业务指标告警
+    - match:
+        category: business
+      receiver: 'business-alerts'
+      group_wait: 1m
+      repeat_interval: 2h
+
+# 接收器配置
+receivers:
+  # 默认接收器
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://qms-chat-service:3004/api/monitoring/webhook'
+        send_resolved: true
+
+  # 严重告警接收器
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'admin@company.com'
+        subject: '🚨 QMS-AI严重告警: {{ .GroupLabels.alertname }}'
+        body: |
+          告警详情:
+          {{ range .Alerts }}
+          - 告警名称: {{ .Annotations.summary }}
+          - 详细描述: {{ .Annotations.description }}
+          - 告警时间: {{ .StartsAt }}
+          - 标签: {{ .Labels }}
+          {{ end }}
+    webhook_configs:
+      - url: 'http://qms-chat-service:3004/api/monitoring/webhook'
+        send_resolved: true
+    # 可以添加钉钉、企业微信等通知
+    # webhook_configs:
+    #   - url: 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN'
+
+  # 警告级别接收器
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'ops@company.com'
+        subject: '⚠️ QMS-AI警告告警: {{ .GroupLabels.alertname }}'
+        body: |
+          告警详情:
+          {{ range .Alerts }}
+          - 告警名称: {{ .Annotations.summary }}
+          - 详细描述: {{ .Annotations.description }}
+          - 告警时间: {{ .StartsAt }}
+          {{ end }}
+
+  # 业务指标接收器
+  - name: 'business-alerts'
+    email_configs:
+      - to: 'business@company.com'
+        subject: '📊 QMS-AI业务指标告警: {{ .GroupLabels.alertname }}'
+        body: |
+          业务指标异常:
+          {{ range .Alerts }}
+          - 指标名称: {{ .Annotations.summary }}
+          - 异常描述: {{ .Annotations.description }}
+          - 发生时间: {{ .StartsAt }}
+          {{ end }}
+
+# 抑制规则
+inhibit_rules:
+  # 如果服务宕机，抑制该服务的其他告警
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['instance']
+
+  # 如果有严重告警，抑制相关的警告告警
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# 模板配置
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

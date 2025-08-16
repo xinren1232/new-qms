@@ -1,0 +1,83 @@
+spring:
+  application:
+    sys-code: transcend-plm           #系统编号
+    name: transcend-plm-datadriven-apm
+    version: 1.0.0
+    description: transcend plm datadriven project for Spring Boot
+  profiles:
+    active: ${spring_profiles_active:loc}
+app:
+  id: ${spring.application.name}
+    
+---
+#local environment
+spring:
+  config:
+    activate:
+      on-profile: loc
+    import: optional:config\application-loc.properties
+apollo:
+  meta: ${APOLLO_SERVICE_URI:http://10.248.38.31:8080}
+  bootstrap:
+    namespaces: ${apollo_bootstrap_namespaces:application}
+    enabled: true
+
+
+---
+#develop environment
+spring:
+  config:
+    activate:
+      on-profile: dev
+apollo:
+  meta: http://10.250.112.141:28170,http://10.250.112.142:28170
+  bootstrap:
+    namespaces: ${apollo_bootstrap_namespaces:application}
+    enabled: true
+    eagerLoad:
+      enabled: true
+
+---
+#test environment
+spring:
+  config:
+    activate:
+      on-profile: test
+apollo:
+  meta: ${APOLLO_SERVICE_URI:http://10.248.38.31:8080}
+  bootstrap:
+    namespaces: ${apollo_bootstrap_namespaces:application}
+    enabled: true
+    eagerLoad:
+      enabled: true
+
+---
+#uat environment
+spring:
+  config:
+    activate:
+      on-profile: uat
+apollo:
+  meta: ${APOLLO_SERVICE_URI:http://10.128.3.176:8080}
+  bootstrap:
+    namespaces: ${apollo_bootstrap_namespaces:application}
+    enabled: true
+    eagerLoad:
+      enabled: true
+
+---
+#prod environment
+spring:
+  config:
+    activate:
+      on-profile: prod-sz
+apollo:
+  meta: http://10.128.3.143:8080
+  bootstrap:
+    namespaces: ${apollo_bootstrap_namespaces:application}
+    enabled: true
+    eagerLoad:
+      enabled: true
+
+
+

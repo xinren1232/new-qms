@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.mapper.CfgLifeCycleTemplateObjRelMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.CfgLifeCycleTemplateObjRelPo">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="templateBid" column="template_bid" jdbcType="VARCHAR"/>
+            <result property="templateVersion" column="template_version" jdbcType="VARCHAR"/>
+            <result property="lifeCycleCode" column="life_cycle_code" jdbcType="VARCHAR"/>
+            <result property="targetObjBid" column="target_obj_bid" jdbcType="VARCHAR"/>
+            <result property="targetObjName" column="target_obj_name" jdbcType="VARCHAR"/>
+            <result property="targetObjRel" column="target_obj_rel" jdbcType="VARCHAR"/>
+            <result property="targetModelCode" column="target_model_code" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result column="enable_flag" jdbcType="INTEGER" property="enableFlag" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,template_bid,
+        template_version,life_cycle_code,target_obj_bid,
+        target_obj_name,target_obj_rel,target_model_code,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time,delete_flag
+    </sql>
+</mapper>

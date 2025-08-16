@@ -1,0 +1,51 @@
+# QMS-AI pnpm工作空间配置
+# 统一管理前后端所有项目
+
+packages:
+  # 后端服务
+  - 'backend/nodejs'
+  
+  # 前端应用
+  - 'frontend/应用端'
+  - 'frontend/配置端'
+  
+  # 可选：其他子项目
+  - 'tools/*'
+  - 'scripts/*'
+
+# 共享依赖配置
+catalog:
+  # 前端框架
+  vue: "^3.5.12"
+  vue2: "^2.7.16"
+  element-plus: "^2.8.4"
+  element-ui: "2.15.6"
+  
+  # 构建工具
+  vite: "^5.4.10"
+  "@vue/cli-service": "5.0.7"
+  
+  # 通用工具
+  axios: "^1.11.0"
+  lodash: "^4.17.21"
+  dayjs: "^1.11.5"
+  
+  # 后端框架
+  express: "^4.21.2"
+  cors: "^2.8.5"
+  dotenv: "^17.2.1"
+  
+  # 数据库和缓存
+  sqlite3: "^5.1.7"
+  redis: "^4.7.1"
+  pg: "^8.16.3"
+  
+  # 安全和认证
+  bcrypt: "^6.0.0"
+  jsonwebtoken: "^9.0.2"
+  helmet: "^8.0.0"
+  
+  # 开发工具
+  nodemon: "^3.1.7"
+  jest: "^29.7.0"
+  typescript: "^5.6.3"

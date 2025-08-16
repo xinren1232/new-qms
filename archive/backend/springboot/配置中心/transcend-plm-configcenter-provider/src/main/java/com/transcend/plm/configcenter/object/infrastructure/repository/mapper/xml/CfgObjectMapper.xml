@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.CfgObjectMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectPo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="version" jdbcType="INTEGER" property="version"/>
+        <result column="model_version_code" jdbcType="VARCHAR" property="modelVersionCode"/>
+        <result column="parent_model_version_code" jdbcType="VARCHAR" property="parentModelVersionCode"/>
+        <result column="parent_version" jdbcType="INTEGER" property="parentVersion"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="avatar" jdbcType="VARCHAR" property="avatar"/>
+        <result column="enable_flag" jdbcType="VARCHAR" property="enableFlag"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="base_model" jdbcType="VARCHAR" property="baseModel"/>
+        <result column="table_bid" jdbcType="VARCHAR" property="tableBid"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="sort" jdbcType="INTEGER" property="sort"/>
+        <result column="is_draft" jdbcType="TINYINT" property="draft"/>
+        <result column="relation_flag" jdbcType="TINYINT" property="relationFlag"/>
+        <result column="version_flag" jdbcType="TINYINT" property="versionFlag"/>
+        <result column="tree_flag" jdbcType="TINYINT" property="treeFlag"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+        <result column="lang_dict" jdbcType="VARCHAR" property="langDict"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+    id, bid, model_code, version, model_version_code, parent_model_version_code, parent_version,
+    `name`,table_bid, avatar, enable_flag, description, base_model, sort, is_draft, relation_flag,
+    version_flag,lang_dict, created_time, updated_time, created_by, updated_by, tenant_id, type, tree_flag,
+        is_multi_object_model
+    </sql>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object
+    </select>
+
+    <insert id="insert">
+        insert into cfg_object (id, bid, model_code, version,
+        model_version_code, parent_model_version_code,
+        parent_version, `name`,table_bid,
+        avatar, enable_flag, description,
+        base_model, sort, is_draft,
+        relation_flag, version_flag,lang_dict, created_time,
+        updated_time, created_by, updated_by,tenant_id,type, tree_flag,is_multi_object_model)
+        values (#{id,jdbcType=INTEGER}, #{bid,jdbcType=VARCHAR}, #{modelCode,jdbcType=VARCHAR},
+        #{version,jdbcType=INTEGER}, #{modelVersionCode,jdbcType=VARCHAR}, #{parentModelVersionCode,jdbcType=VARCHAR},
+        #{parentVersion,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR},#{tableBid,jdbcType=VARCHAR},
+        #{avatar,jdbcType=VARCHAR}, #{enableFlag,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR},
+        #{baseModel,jdbcType=VARCHAR}, #{sort,jdbcType=INTEGER}, #{draft,jdbcType=TINYINT},
+        #{relationFlag,jdbcType=TINYINT}, #{versionFlag,jdbcType=TINYINT},
+        #{langDict,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+        NOW() ,
+        NOW() , #{createdBy,jdbcType=VARCHAR}, #{updatedBy,jdbcType=VARCHAR}, #{tenantId,jdbcType=VARCHAR},#{type},#{treeFlag,jdbcType=TINYINT}
+                   ,#{isMultiObjectModel,jdbcType=TINYINT})
+    </insert>
+
+    <select id="findMaxModelCodeInRoot" resultType="java.lang.String">
+        SELECT MAX(model_code) FROM cfg_object WHERE LENGTH(model_code) = 3
+    </select>
+
+    <select id="findMaxModelCodeByParentCode" resultType="java.lang.String">
+        SELECT MAX(model_code) FROM cfg_object WHERE model_code LIKE CONCAT(#{parentCode,jdbcType=VARCHAR},'%')
+        AND LENGTH(model_code) = LENGTH(#{parentCode,jdbcType=VARCHAR}) + 3
+    </select>
+
+    <delete id="delete">
+        DELETE FROM cfg_object WHERE model_code = #{modelCode,jdbcType=VARCHAR}
+    </delete>
+
+    <update id="bulkUpdate">
+        <foreach collection="poList" item="item" separator=";">
+            update cfg_object
+            <set>
+                <trim suffixOverrides=",">
+                    <if test="item.version != null">
+                        version = #{item.version,jdbcType=INTEGER},
+                    </if>
+                    <if test="item.modelVersionCode != null">
+                        model_version_code = #{item.modelVersionCode,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.parentModelVersionCode != null">
+                        parent_model_version_code = #{item.parentModelVersionCode,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.parentVersion != null">
+                        parent_version = #{item.parentVersion,jdbcType=INTEGER},
+                    </if>
+                    <if test="item.name != null">
+                        `name` = #{item.name,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.avatar != null">
+                        avatar = #{item.avatar,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.enableFlag != null">
+                        enable_flag = #{item.enableFlag,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.description != null">
+                        `description` = #{item.description,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.baseModel != null">
+                        `base_model` = #{item.baseModel,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.tableBid != null">
+                        `table_bid` = #{item.tableBid,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.type != null">
+                        `type` = #{item.type,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.sort != null">
+                        sort = #{item.sort,jdbcType=INTEGER},
+                    </if>
+                    <if test="item.draft != null">
+                        is_draft = #{item.draft,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.relationFlag != null">
+                        relation_flag = #{item.relationFlag,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.versionFlag != null">
+                        version_flag = #{item.versionFlag,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.updatedBy != null">
+                        updated_by = #{item.updatedBy,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.updatedTime != null">
+                        updated_time = #{item.updatedTime,jdbcType=TIMESTAMP},
+                    </if>
+                    <if test="item.langDict != null">
+                        lang_dict = #{item.langDict,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+                    </if>
+                    <if test="item.treeFlag != null">
+                        tree_flag = #{item.treeFlag,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.isMultiObjectModel != null">
+                        is_multi_object_model = #{item.isMultiObjectModel,jdbcType=BOOLEAN},
+                    </if>
+                </trim>
+            </set>
+            where model_code = #{item.modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+
+    <select id="find" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object
+        WHERE model_code = #{modelCode,jdbcType=VARCHAR}
+    </select>
+
+    <select id="getByObjectBid" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object
+        WHERE bid = #{objectBid,jdbcType=VARCHAR}
+    </select>
+
+    <update id="updateChildren">
+        update cfg_object
+        set parent_model_version_code = #{parentModelVersionCodeForChildren,jdbcType=VARCHAR},
+        parent_version = #{newParentVersion,jdbcType=INTEGER},
+        updated_by = #{jobNumber,jdbcType=VARCHAR},
+        updated_time = SYSDATE()
+        where parent_model_version_code = #{oldParentVersionCodeForChildren,jdbcType=VARCHAR}
+    </update>
+
+    <select id="findAllChildrenByParentMvc" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object
+        WHERE parent_model_version_code = #{parentMvc,jdbcType=VARCHAR}
+    </select>
+
+    <select id="findAllChildrenByModelCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object
+        WHERE model_code LIKE CONCAT(#{modelCode,jdbcType=VARCHAR}, '%')
+    </select>
+
+    <delete id="deleteByModelCodes">
+        DELETE FROM cfg_object WHERE model_code IN
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </delete>
+
+    <select id="findListByNameList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE `name` IN
+        <foreach collection="list" item="name" separator="," open="(" close=")">
+            #{name,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <select id="findLikeName" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE `name` like concat(concat('%', #{name},'%'))
+
+    </select>
+
+    <select id="findLikeModelCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE `model_code` like concat(concat(#{modelCode},'%'))
+    </select>
+
+    <select id="findModelCodeListByObjectBidList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE bid IN
+        <foreach collection="bidList" item="bid" separator="," open="(" close=")">
+            #{bid,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <select id="findByBaseModel" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE base_model = #{baseModel,jdbcType=VARCHAR}
+    </select>
+
+    <select id="getOneByBaseModel" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE base_model = #{baseModel,jdbcType=VARCHAR} order by model_code limit 1
+    </select>
+
+    <select id="findListByModelCodeList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object WHERE model_code IN
+        <foreach collection="modelCodeList" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+</mapper>

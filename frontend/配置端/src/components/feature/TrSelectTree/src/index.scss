@@ -1,0 +1,170 @@
+.tr-select-tree {
+  position: relative;
+
+
+  // 输入框外部容器
+  &__select {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-left: 10px;
+    min-height: 28px;
+    border: 1px solid #DCDFE6;
+    border-radius: 4px;
+    line-height: normal;
+    white-space: normal;
+    color: #606266;
+
+    &.is-disabled {
+      cursor: no-drop;
+
+      &,
+      .tr-select-tree__input{
+        pointer-events: none;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  // 单选时展示的普通文本
+  &__radio-text {
+    position: absolute;
+    padding: 2px 0 2px 5px;
+    font-size: 12px;
+  }
+
+  // 输入框激活状态
+  &__select.is-focus {
+    border-color: var(--primary);
+
+    .tr-select-tree__radio-text{
+      color: #a9a9a9;
+    }
+
+    .el-icon-close {
+      display: block;
+    }
+  }
+
+  // 选中的标签
+  &__tags{
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    overflow: hidden;
+
+    ::v-deep  .el-tag {
+      position: relative;
+      padding-right: 15px;
+      margin: 2px 0 2px 5px;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+
+      &__close{
+        position: absolute;
+        right: 0;
+        top: 1px;
+      }
+    }
+  }
+
+  // 过滤输入框
+  &__input {
+    flex: 1;
+    margin-left: 5px;
+    height: 20px;
+    min-width: 100px;
+    line-height: 20px;
+
+    input{
+      width: 100%;
+      height: 100%;
+      border: 0;
+      outline: 0;
+      padding: 0;
+      font-size: 12px;
+      background: none;
+
+      &::placeholder{
+        color: #C0C4CC;
+      }
+    }
+  }
+
+  // 清除选择
+  .el-icon-close{
+    display: none;
+    position: absolute;
+    right: 5px;
+    bottom: 0;
+    transform: translateY(-40%);
+    padding: 1px;
+    font-size: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    color: #afafaf;
+
+    &:hover{
+      background: #a9a9a9;
+      color: #fff;
+    }
+  }
+
+  &__tree {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    padding: 5px 0;
+    border-radius: 5px;
+    max-height: 300px;
+    border: 1px solid #DCDFE6;
+    overflow: auto;
+    z-index: 2;
+
+    ::v-deep  .el-tree-node__content{
+      height: 30px;
+
+      .el-tree-node__expand-icon{
+        position: relative;
+        z-index: 1;
+      }
+
+      .custom-tree-node{
+        position: relative;
+        width: 100%;
+        height: 30px;
+        padding-left: 5px;
+        line-height: 30px;
+
+        &.is-active::before,
+        &.is-disabled::before{
+          content: '';
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          left: -100%;
+          background: inherit;
+          z-index: 0;
+        }
+
+        // 禁用的节点（不可点击或者其他操作）
+        &.is-disabled{
+          background-color: #f1f1f1;
+          cursor: not-allowed;
+          color: #afafaf;
+        }
+
+        // 选中的节点（再次点击可取消勾选）
+        &.is-active{
+          font-weight: bold;
+          background-color: #D9ECFF;
+          color: var(--primary);
+        }
+      }
+    }
+  }
+}

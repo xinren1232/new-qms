@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.flow.repository.mapper.ApmFlowDriveRelateMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.flow.repository.po.ApmFlowDriveRelate">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="eventBid" column="event_bid" jdbcType="VARCHAR"/>
+            <result property="relationModelCode" column="relation_model_code" jdbcType="VARCHAR"/>
+            <result property="sourceAppBid" column="source_app_bid" jdbcType="VARCHAR"/>
+            <result property="sourceAppName" column="source_app_name" jdbcType="VARCHAR"/>
+            <result property="sourceFlowTemplateBid" column="source_flow_template_bid" jdbcType="VARCHAR"/>
+           <result property="sourceLifeCycleCode" column="source_life_cycle_code" jdbcType="VARCHAR"/>
+            <result property="sourceFlowTemplateName" column="source_flow_template_name" jdbcType="VARCHAR"/>
+            <result property="sourceNodeBid" column="source_node_bid" jdbcType="VARCHAR"/>
+            <result property="sourceNodeName" column="source_node_name" jdbcType="VARCHAR"/>
+            <result property="completeType" column="complete_type" jdbcType="INTEGER"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,event_bid,
+        relation_model_code,source_app_bid,source_app_name,source_life_cycle_code,
+        source_flow_template_bid,source_flow_template_name,source_node_bid,
+        source_node_name,complete_type,tenant_id,
+        created_by,created_time,updated_by,
+        updated_time,delete_flag,enable_flag
+    </sql>
+</mapper>

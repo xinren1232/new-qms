@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.task.mapper.ApmTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.task.domain.ApmTask">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="taskType" column="task_type" jdbcType="VARCHAR"/>
+            <result property="bizBid" column="biz_bid" jdbcType="VARCHAR"/>
+            <result property="taskState" column="task_state" jdbcType="INTEGER"/>
+            <result property="taskHandler" column="task_handler" jdbcType="VARCHAR"/>
+            <result property="handleTime" column="handle_time" jdbcType="TIMESTAMP"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,task_type,
+        biz_bid,task_state,task_handler,
+        handle_time,tenant_id,created_by,
+        created_time,updated_by,updated_time,
+        delete_flag,enable_flag
+    </sql>
+
+    <delete id="deleteByTaskIds">
+        delete from apm_task where id in (
+        <foreach collection="ids" item="id" separator=",">
+            #{id}
+        </foreach>
+        )
+    </delete>
+
+    <delete id="deleteByBizBids">
+        delete from apm_task where  task_type = #{taskType} and biz_bid in (
+        <foreach collection="bizBids" item="bizBid" separator=",">
+            #{bizBid}
+        </foreach>
+        )
+    </delete>
+
+    <delete id="deleteByApmTaskDeleteAO">
+        delete from apm_task where task_type = #{apmTaskDeleteAO.taskType} and biz_bid in (
+        <foreach collection="apmTaskDeleteAO.bizBids" item="bid" separator=",">
+            #{bid}
+        </foreach>
+        )
+    </delete>
+
+    <select id="countNeedTask" resultType="Long">
+        select count(1) from apm_task where `biz_bid` =  #{bizBid} and `task_handler` =  #{handler} and `delete_flag` = 0 and `task_state` = 0
+    </select>
+
+    <delete id="deleteNotComplete">
+        delete from apm_task where task_type = #{taskType} and task_handler != #{handler} and biz_bid = #{bizBid} and task_state != 2
+    </delete>
+</mapper>

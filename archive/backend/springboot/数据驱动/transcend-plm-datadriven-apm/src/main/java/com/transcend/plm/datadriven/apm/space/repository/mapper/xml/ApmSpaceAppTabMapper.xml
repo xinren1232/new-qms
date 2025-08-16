@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmSpaceAppTabMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmSpaceAppTab">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="bid" column="bid" jdbcType="VARCHAR"/>
+        <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+        <result property="targetSpaceAppBid" column="target_space_app_bid" jdbcType="VARCHAR"/>
+        <result property="relationModelCode" column="relation_model_code" jdbcType="VARCHAR"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="multiTreeContent" column="multi_tree_content" jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+        <result property="configContent" column="config_content" jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+        <result property="multiAppTreeContent" column="multi_app_tree_content" jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+        <result property="sort" column="sort" jdbcType="INTEGER"/>
+        <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+        <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+        <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+        <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+        <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+        <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+        <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+        <result property="component" column="component" jdbcType="VARCHAR"/>
+        <result property="code" column="code" jdbcType="VARCHAR"/>
+        <result property="source" column="source" jdbcType="VARCHAR"/>
+        <result property="viewModelCode" column="view_model_code" jdbcType="VARCHAR"/>
+        <result property="relationActionPermissionList" column="relation_action_permission_list" jdbcType="OTHER"
+                typeHandler="com.transcend.plm.datadriven.apm.tools.RelationActionPermissionListTypeHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,space_app_bid,
+        target_space_app_bid,relation_model_code,name,
+        config_content,multi_tree_content,sort,delete_flag,
+        enable_flag,created_time,updated_time,
+        created_by,updated_by,tenant_id,
+        component,code,view_model_code,source
+    </sql>
+</mapper>

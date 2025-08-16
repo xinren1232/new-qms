@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmNotifyExecuteRecordHisMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmNotifyExecuteRecordHis">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="instanceBid" column="instance_bid" jdbcType="VARCHAR"/>
+            <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="notifyConfigBid" column="notify_config_bid" jdbcType="VARCHAR"/>
+            <result property="tenantCode" column="tenant_code" jdbcType="VARCHAR"/>
+            <result property="notifyJobnumbers" column="notify_jobnumbers" jdbcType="OTHER"/>
+            <result property="nofifyTime" column="nofify_time" jdbcType="TIMESTAMP"/>
+            <result property="notifyWay" column="notify_way" jdbcType="VARCHAR"/>
+            <result property="nofifyNow" column="nofify_now" jdbcType="BOOLEAN"/>
+            <result property="notifyContent" column="notify_content" jdbcType="VARCHAR"/>
+            <result property="nofifyResult" column="nofify_result" jdbcType="INTEGER"/>
+            <result property="notifyTitle" column="notify_title" jdbcType="VARCHAR"/>
+            <result property="nofifyRetryCount" column="nofify_retry_count" jdbcType="INTEGER"/>
+            <result property="nofifyResultMsg" column="nofify_result_msg" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        bid,
+        notify_config_bid,
+        tenant_code,
+        notify_jobnumbers,
+        nofify_time,
+        notify_way,
+        nofify_now,
+        notify_content,
+        notify_title,
+        nofify_result,
+        nofify_retry_count,
+        nofify_result_msg,
+        enable_flag,
+        tenant_id,
+        created_by,
+        created_time,
+        updated_by,
+        updated_time,
+        delete_flag,
+        description,
+        instance_bid,
+        space_app_bid,
+        model_code
+    </sql>
+
+
+    </mapper>

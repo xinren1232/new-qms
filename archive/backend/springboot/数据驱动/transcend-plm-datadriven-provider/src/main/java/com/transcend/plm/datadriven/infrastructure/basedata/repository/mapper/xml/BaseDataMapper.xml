@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.infrastructure.basedata.repository.mapper.BaseDataMapper">
+
+
+    <insert id="insert" parameterType="int">
+        INSERT INTO
+        <include refid="TableNameSql" />
+        <include refid="InsertColumnSql" />
+        VALUES
+        <include refid="InsertValueSql"/>
+    </insert>
+
+    <insert id="insertBatch" parameterType="int">
+        INSERT INTO
+        <include refid="TableNameSql"></include>
+        <include refid="InsertColumnSql" />
+        VALUES
+        <foreach collection="mBaseDataList" separator="," item="mBaseData" index="index">
+            <include refid="InsertValueSql"/>
+        </foreach>
+    </insert>
+
+
+    <select id="list" resultType="com.transcend.plm.datadriven.api.model.MBaseData">
+        select
+        <include refid="SelectPropertySql"></include>
+        from
+        <include refid="ListTableNameSql"></include>
+        <include refid="WhereQueryWrapperSql" />
+        <include refid="OrderQuerySql" />
+        <!-- 拼接内容不包含LIMIT 才进行拼接 -->
+        <if test="additionalSql == null or !additionalSql.toUpperCase().contains('LIMIT')">
+            LIMIT 10000;
+        </if>
+    </select>
+
+    <select id="signObjectRecursionTreeList" resultType="com.transcend.plm.datadriven.api.model.MBaseData">
+        WITH RECURSIVE  tree_data_path AS (
+            SELECT
+                id, bid,name, parent_bid,
+                CAST(bid as char(3000) ) AS tree_bid_path,
+                cast(name as char(3000) ) AS tree_name_path,
+                0 AS level
+            FROM  <include refid="TableNameSql" />
+            where parent_bid = 0
+            UNION ALL
+            SELECT
+                c.id, c.bid,c.name, c.parent_bid,
+                CONCAT(ch.tree_bid_path, ' -> ', c.bid) AS tree_bid_path,
+                CONCAT(ch.tree_name_path, ' -> ', c.name) AS tree_name_path,
+                ch.level + 1 AS level
+            FROM <include refid="TableNameSql" /> c
+            INNER JOIN tree_data_path ch on c.parent_bid= ch.bid
+        )
+        select <include refid="SelectPropertySql"/>
+        from <include refid="TableNameSql" /> a
+        where 1=1
+        and exists (
+            select asd.id
+            from <include refid="TableNameSql" /> asd
+            left join tree_data_path da on da.id= asd.id
+            where 1=1
+              and da.id is not null
+              and da.tree_bid_path like concat('%',a.bid,'%')
+              and exists (
+                select a1.id,a1.name,a1.bid
+                from <include refid="TableNameSql" /> a1
+                where 1=1
+                <if test="queryWrappers != null and queryWrappers.size()>0">
+                    and
+                </if>
+                <include refid="WhereQueryWrapperSqlNotWhere" />
+                and da.tree_bid_path like concat('%',a1.bid,'%')
+            )
+        )
+        <include refid="OrderQuerySql" />
+        LIMIT 10000;
+    </select>
+
+    <select id="listPropertyDistinct" resultType="java.lang.Object">
+        select
+            DISTINCT ${column}
+        from
+        <include refid="ListTableNameSql"></include>
+        <include refid="WhereQueryWrapperSql" />
+        <include refid="OrderQuerySql" />
+        LIMIT ${limitStartNum},${pageSize};
+    </select>
+
+    <select id="listForPage" resultType="com.transcend.plm.datadriven.api.model.MBaseData">
+        select
+        <include refid="SelectPropertySql"></include>
+        from
+        <include refid="ListTableNameSql"></include>
+        <include refid="WhereQueryWrapperSql" />
+        <include refid="OrderQuerySql" />
+    </select>
+
+    <select id="count" resultType="int">
+        select
+        count(*)
+        from
+        <include refid="ListTableNameSql" />
+        <include refid="WhereQueryWrapperSql" />
+        AND delete_flag = 0
+    </select>
+
+    <delete id="delete" parameterType="int">
+        delete from
+        <include refid="TableNameSql" />
+        <include refid="WhereQueryWrapperSql" />
+    </delete>
+
+    <update id="createTable">
+       create table ${tableCreateDto.tableName} (
+         `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+        <foreach collection="tableCreateDto.createCloumns" item="createCloumn" separator=",">
+            ${createCloumn}
+        </foreach>
+        ,
+        <foreach collection="tableCreateDto.createIndexs" item="createIndex" separator=",">
+            ${createIndex}
+        </foreach>
+        ,
+        PRIMARY KEY (`id`) USING BTREE
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT=${tableCreateDto.tableDesc}
+    </update>
+
+    <update id="addTableCloumns">
+        alter table ${tableCreateDto.tableName}
+        <foreach collection="tableCreateDto.createCloumns" item="createCloumn" separator=",">
+            add COLUMN ${createCloumn}
+        </foreach>
+    </update>
+
+    <update id="logicalDelete" parameterType="int">
+        update  <include refid="TableNameSql" />
+        set delete_flag = 1
+        <include refid="WhereQueryWrapperSql" />
+    </update>
+
+    <update id="batchLogicalDeleteByModeCodeAndSourceBid" parameterType="int">
+        <foreach collection="deleteParams" index="modelCode" item="sourceBids" separator=";">
+            update  ${tenantCode}_model_${modelCode} set delete_flag = 1 where delete_flag = 0 and source_bid in
+            <foreach collection="sourceBids" item="sourceBid" open="(" close=")" separator=",">
+                #{sourceBid}
+            </foreach>
+        </foreach>
+    </update>
+
+    <update id="update" parameterType="int">
+        update
+        <include refid="TableNameSql" />
+        set
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <foreach collection="table.tableAttributeDefinitions" item="attr" separator=",">
+                <choose>
+                    <when test="attr.baseFlag == 1">
+                        `${attr.columnName}` = #{mBaseData.${attr.property}}
+                    </when>
+                    <otherwise>
+                        ext = JSON_SET(ext, '<![CDATA[$]]>.${attr.columnName}', #{mBaseData.${attr.property}})
+                    </otherwise>
+                </choose>
+            </foreach>
+        </trim>
+        <include refid="WhereQueryWrapperSql" />
+    </update>
+    <update id="updateBatch">
+        <foreach collection="mBaseDataList" item="data" index="index" separator=";">
+           update
+           <include refid="TableNameSql" />
+           set
+           <trim prefix="" suffix="" suffixOverrides=",">
+               <foreach collection="table.tableAttributeDefinitions" item="attr" separator=",">
+                   <choose>
+                       <when test="attr.baseFlag == 1">
+                           `${attr.columnName}` = #{data.baseData.${attr.property}}
+                       </when>
+                       <otherwise>
+                           ext = JSON_SET(ext, '<![CDATA[$]]>.${attr.columnName}', #{data.baseData.${attr.property}})
+                       </otherwise>
+                   </choose>
+               </foreach>
+           </trim>
+            <if test="data.wrappers != null and data.wrappers.size()>0">
+                WHERE
+            </if>
+            <if test="data.wrappers != null and data.wrappers.size()>0">
+                <foreach collection="data.wrappers" item="mqw">
+                    <choose>
+                        <when test="mqw.relation != null and mqw.relation">
+                            ${mqw.sqlRelation}
+                        </when>
+                        <otherwise>
+                            ${mqw.property} ${mqw.condition}
+                            <choose>
+                                <when test="mqw.isList != null and mqw.isList">
+                                    (
+                                    <foreach collection="mqw.values" item="v" separator=",">
+                                        #{v}
+                                    </foreach>
+                                    )
+                                </when>
+                                <otherwise>
+                                    #{mqw.value}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </foreach>
+            </if>
+        </foreach>
+    </update>
+<!--************************************通用SQL********************************************-->
+
+    <sql id="InsertColumnSql">
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <foreach collection="table.tableAttributeDefinitions" item="attr" separator=",">
+                `${attr.columnName}`
+            </foreach>
+        </trim>
+    </sql>
+
+    <sql id="InsertValueSql">
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <foreach collection="table.tableAttributeDefinitions" item="attr" separator=",">
+                <choose>
+                    <when test="attr.baseFlag == 1">
+                        #{mBaseData.${attr.property}}
+                    </when>
+                    <otherwise>
+                        #{mBaseData.${attr.property},typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}
+                    </otherwise>
+                </choose>
+            </foreach>
+        </trim>
+    </sql>
+
+    <!--TODO ModelQueryWrapper 需要在sql 层面 用column-->
+    <sql id="WhereQueryWrapperSql">
+        <!--是否需要 WHERE的判断-->
+        <if test="queryWrappers != null and queryWrappers.size()>0">
+            WHERE
+        </if>
+        <include refid="WhereQueryWrapperSqlNotWhere"/>
+    </sql>
+
+    <sql id="WhereQueryWrapperSqlNotWhere">
+        <if test="queryWrappers != null and queryWrappers.size()>0">
+            <foreach collection="queryWrappers" item="mqw">
+                <choose>
+                    <when test="mqw.relation != null and mqw.relation">
+                        ${mqw.sqlRelation}
+                    </when>
+                    <otherwise>
+                        ${mqw.property} ${mqw.condition}
+                        <choose>
+                            <when test="mqw.isList != null and mqw.isList">
+                                (
+                                <foreach collection="mqw.values" item="v" separator=",">
+                                    #{v}
+                                </foreach>
+                                )
+                            </when>
+                            <when test="mqw.isBetween != null and mqw.isBetween">
+                                <foreach collection="mqw.values" item="v" separator="and">
+                                    #{v}
+                                </foreach>
+                            </when>
+                            <when test="mqw.value != null">
+                                #{mqw.value}
+                            </when>
+                            <otherwise>
+
+                            </otherwise>
+                        </choose>
+                    </otherwise>
+                </choose>
+            </foreach>
+        </if>
+        <if test="jsonConditinStr != null">
+            <if test="queryWrappers != null and queryWrappers.size()>0">
+                AND
+            </if>
+            ${jsonConditinStr}
+        </if>
+        <if test="additionalSql != null">
+            <if test="queryWrappers != null and queryWrappers.size()>0">
+                AND
+            </if>
+            ${additionalSql}
+        </if>
+    </sql>
+
+    <sql id="OrderQuerySql">
+        <if test="orderQueries != null and orderQueries.size()>0">
+            ORDER BY
+            <foreach collection="orderQueries" item="o" separator=",">
+                <if test="o.property != null and o.property != ''">
+                    ${o.property}
+                </if>
+                <choose>
+                    <when test="o.desc != null and o.desc">
+                      DESC
+                    </when>
+                    <otherwise>
+                       ASC
+                    </otherwise>
+                </choose>
+
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="SelectPropertySql">
+        <trim suffixOverrides=",">
+            <foreach collection="table.tableAttributeDefinitions" item="attr" separator=",">
+                <choose>
+                    <when test="attr.baseFlag == 1">
+                        `${attr.columnName}` as `${attr.property}`
+                    </when>
+                    <otherwise>
+                        JSON_EXTRACT(ext, '<![CDATA[$]]>.${attr.columnName}') AS `${attr.property}`
+                    </otherwise>
+                </choose>
+            </foreach>
+        </trim>
+    </sql>
+
+    <sql id="TableNameSql">
+
+        <choose>
+            <when test="table.useLogicTableName != null and table.useLogicTableName == 1">
+                ${table.logicTableName}
+            </when>
+            <when test="table.tableNameSuffix != null">
+                ${table.tenantCode}_model_${table.logicTableName}_${table.tableNameSuffix}
+            </when>
+            <otherwise>
+                ${table.tenantCode}_model_${table.logicTableName}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="ListTableNameSql">
+
+        <choose>
+            <when test="table.useLogicTableName != null and table.useLogicTableName == 1">
+                ${table.logicTableName} a
+            </when>
+            <when test="table.tableNameSuffix != null">
+                ${table.tenantCode}_model_${table.logicTableName}_${table.tableNameSuffix} a
+            </when>
+            <otherwise>
+                ${table.tenantCode}_model_${table.logicTableName} a
+            </otherwise>
+        </choose>
+    </sql>
+
+
+
+</mapper>

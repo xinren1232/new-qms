@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.transcend.plm.datadriven</groupId>
+		<artifactId>transcend-plm-datadriven</artifactId>
+		<version>1.0.0-SNAPSHOT</version>
+	</parent>
+	<artifactId>transcend-plm-datadriven-provider</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+	<name>transcend-plm-datadriven-provider</name>
+	<description>Plm-transcend project for Spring Boot</description>
+	<properties>
+		<hulk-framework.version>2.1.0.RELEASE</hulk-framework.version>
+		<pagehelper.version>1.4.1</pagehelper.version>
+		<hutool.version>5.3.10</hutool.version>
+		<transcend-plm-configcenter.version>1.0.0-ALMv2-SNAPSHOT</transcend-plm-configcenter.version>
+		<transcend-framework.version>1.0.0-SNAPSHOT</transcend-framework.version>
+	</properties>
+	<dependencies>
+		<!--引入 transcend-plm-datadriven-->
+		<dependency>
+			<groupId>com.transcend.plm.datadriven</groupId>
+			<artifactId>transcend-plm-datadriven-api</artifactId>
+			<version>${transcend-plm.version}</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<!--引入 transcend-framework-->
+		<dependency>
+			<groupId>com.transcend.framework</groupId>
+			<artifactId>transcend-framework-common</artifactId>
+			<version>${transcend-framework.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.transcend.framework</groupId>
+			<artifactId>transcend-framework-core</artifactId>
+			<version>${transcend-framework.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.transcend.framework</groupId>
+			<artifactId>transcend-framework-sso</artifactId>
+			<version>${transcend-framework.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.transcend.framework</groupId>
+			<artifactId>transcend-framework-dao</artifactId>
+			<version>${transcend-framework.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.transcend.framework</groupId>
+			<artifactId>transcend-framework-open</artifactId>
+			<version>${transcend-framework.version}</version>
+		</dependency>
+
+		<!--引入 transcend-configcenter-->
+		<dependency>
+			<groupId>com.transcend.plm.configcenter</groupId>
+			<artifactId>transcend-plm-configcenter-api</artifactId>
+			<version>${transcend-plm-configcenter.version}</version>
+		</dependency>
+		<!-- spring-boot容器tomcat或undertow -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-undertow</artifactId>
+		</dependency>
+		<!-- 框架基础依赖管理 eureka -->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-eureka</artifactId>
+			<version>${hulk-framework.version}</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>swagger-annotations</artifactId>
+					<groupId>io.swagger</groupId>
+				</exclusion>
+				<exclusion>
+					<groupId>io.swagger.core.v3</groupId>
+					<artifactId>swagger-annotations</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!--缓存-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-cache</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!-- 指标监控-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-actuator</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!-- redisson -->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-redisson</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!--mybatisplus-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-mybatisplus</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!--阿里云oss存储组件-->
+		<!--<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-oss-aliyun</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>-->
+
+		<!--文档云组件-->
+		<!--<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-sdk-doccloud</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>-->
+
+		<!--推送中心组件-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-sdk-push</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!-- excel-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-excel</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!-- hutool-->
+		<dependency>
+			<groupId>cn.hutool</groupId>
+			<artifactId>hutool-all</artifactId>
+			<version>${hutool.version}</version>
+		</dependency>
+
+
+		<!-- 用户中心组件 
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-sdk-uac</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+		-->
+		<!--分页插件-->
+		<dependency>
+			<groupId>com.github.pagehelper</groupId>
+			<artifactId>pagehelper-spring-boot-starter</artifactId>
+			<version>${pagehelper.version}</version>
+		</dependency>
+		<!--飞书消息组件-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-message</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!--rabbit消息组件-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-mq-rabbit</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+		<!--序列化输出脱敏-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-desensitize</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!--密码加密传输-->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+			<artifactId>hulk-framework-starter-jasypt</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+
+		<!-- powerjob-worker-spring-boot-starter
+		<dependency>
+		   <groupId>com.transsion.hulk</groupId>
+		   <artifactId>hulk-framework-ext-powerjob-worker</artifactId>
+		    <version>${hulk-framework.version}</version>
+		</dependency>
+		-->
+
+		<!-- netty+websocket -->
+		<dependency>
+			<groupId>com.transsion.hulk</groupId>
+            <artifactId>hulk-framework-ext-websocket</artifactId>
+			<version>${hulk-framework.version}</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/cn.hutool/hutool-core -->
+		<dependency>
+			<groupId>cn.hutool</groupId>
+			<artifactId>hutool-core</artifactId>
+			<version>5.8.15</version>
+		</dependency>
+		<dependency>
+			<groupId>net.bytebuddy</groupId>
+			<artifactId>byte-buddy</artifactId>
+			<version>1.12.19</version>
+		</dependency>
+		<dependency>
+			<groupId>net.bytebuddy</groupId>
+			<artifactId>byte-buddy-agent</artifactId>
+			<version>1.12.19</version>
+		</dependency>
+		<dependency>
+			<groupId>com.transcend.framework</groupId>
+			<artifactId>transcend-framework-elasticsearch</artifactId>
+			<version>${transcend-plm.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>fastjson</artifactId>
+			<version>1.2.83</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<!-- MapStruct 依赖 -->
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>1.5.5.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct-processor</artifactId>
+			<version>1.5.5.Final</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<finalName>transcend-plm-datadriven-provider</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.11.0</version>
+				<configuration>
+					<source>21</source>
+					<target>21</target>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>1.5.5.Final</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.30</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok-mapstruct-binding</artifactId>
+							<version>0.2.0</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: qms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    networks:
+      - qms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Commander (可选的Web管理界面)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: qms-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=${REDIS_COMMANDER_USER:-admin}
+      - HTTP_PASSWORD=${REDIS_COMMANDER_PASSWORD:-admin123}
+    networks:
+      - qms-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+
+networks:
+  qms-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

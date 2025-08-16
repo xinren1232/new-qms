@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.dictionary.infrastructure.repository.mapper.CfgDictionaryMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.dictionary.infrastructure.repository.po.CfgDictionaryPo">
+        <id column="cfg_dictionary_id" jdbcType="INTEGER" property="id" />
+        <result column="cfg_dictionary_bid" jdbcType="VARCHAR" property="bid" />
+        <result column="cfg_dictionary_permission_scope" jdbcType="VARCHAR" property="permissionScope" />
+        <result column="cfg_dictionary_group_name" jdbcType="VARCHAR" property="groupName" />
+        <result column="cfg_dictionary_type" jdbcType="VARCHAR" property="type" />
+        <result column="cfg_dictionary_code" jdbcType="VARCHAR" property="code" />
+        <result column="cfg_dictionary_name" jdbcType="VARCHAR" property="name" />
+        <result column="cfg_dictionary_description" jdbcType="VARCHAR" property="description" />
+        <result column="cfg_dictionary_enable_flag" jdbcType="INTEGER" property="enableFlag" />
+        <result column="cfg_dictionary_sort" jdbcType="INTEGER" property="sort" />
+        <result column="cfg_dictionary_tenant_id" jdbcType="INTEGER" property="tenantId" />
+        <result column="cfg_dictionary_created_time" jdbcType="TIMESTAMP" property="createdTime" />
+        <result column="cfg_dictionary_updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+        <result column="cfg_dictionary_created_by" jdbcType="VARCHAR" property="createdBy" />
+        <result column="cfg_dictionary_updated_by" jdbcType="VARCHAR" property="updatedBy" />
+    </resultMap>
+    <sql id="Base_Column_List">
+    cfg_dictionary.permission_scope as cfg_dictionary_permission_scope,cfg_dictionary.group_name as cfg_dictionary_group_name,
+    cfg_dictionary.custom1 as custom1,cfg_dictionary.custom2 as custom2,cfg_dictionary.custom3 as custom3,
+    cfg_dictionary.id as cfg_dictionary_id, cfg_dictionary.bid as cfg_dictionary_bid,
+    cfg_dictionary.`type` as `dictionary_type`, cfg_dictionary.code as cfg_dictionary_code,
+    cfg_dictionary.`name` as `dictionary_name`, cfg_dictionary.`description` as `dictionary_description`,
+    cfg_dictionary.`enable_flag` as `dictionary_enable_flag`, cfg_dictionary.sort as cfg_dictionary_sort,
+    cfg_dictionary.tenant_id as cfg_dictionary_tenant_id,
+    cfg_dictionary.created_time as cfg_dictionary_created_time, cfg_dictionary.updated_time as cfg_dictionary_updated_time,
+    cfg_dictionary.created_by as cfg_dictionary_created_by, cfg_dictionary.updated_by as cfg_dictionary_updated_by
+  </sql>
+
+    <select id="getByBid" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_dictionary
+        WHERE bid = #{bid,jdbcType=VARCHAR}
+    </select>
+
+
+    <select id="list" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_dictionary
+        <where>
+            <if test="name != null">
+                 `name` like  CONCAT('%',#{name,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="code != null">
+                  `code` like CONCAT('%',#{code,jdbcType=VARCHAR}, '%')
+            </if>
+        </where>
+    </select>
+    <select id="getByCode" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from cfg_dictionary cfg_dictionary
+        where code = #{code}
+        limit 1
+    </select>
+    <select id="listByByCodesAndEnableFlags" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM cfg_dictionary cfg_dictionary
+        WHERE code IN
+        <foreach collection="codes" item="code" separator="," open="(" close=")">
+            #{code,jdbcType=VARCHAR}
+        </foreach>
+        <if test="enableFlags != null and enableFlags.size()>0">
+            AND enable_flag IN
+            <foreach collection="enableFlags" item="enableFlag" separator="," open="(" close=")">
+                #{enableFlag,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        AND delete_flag = 0
+    </select>
+</mapper>

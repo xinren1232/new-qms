@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型配置验证</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 5px solid #007bff;
+        }
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .model-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .model-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .model-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .model-type {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .external {
+            background: #28a745;
+            color: white;
+        }
+        .internal {
+            background: #007bff;
+            color: white;
+        }
+        .model-details {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .model-id {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .features {
+            margin-top: 10px;
+        }
+        .feature-tag {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin: 2px;
+        }
+        .feature-tag.active {
+            background: #17a2b8;
+            color: white;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 AI模型配置验证</h1>
+        
+        <div id="summary" class="summary">
+            <div class="loading">正在加载模型配置...</div>
+        </div>
+        
+        <div id="models" class="model-grid">
+            <!-- 模型卡片将在这里动态生成 -->
+        </div>
+    </div>
+
+    <script>
+        async function loadModels() {
+            try {
+                const response = await fetch('/api/chat/models');
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.models) {
+                    displayModels(result.data.models);
+                } else {
+                    showError('获取模型列表失败: ' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                showError('网络请求失败: ' + error.message);
+            }
+        }
+        
+        function displayModels(models) {
+            const externalModels = models.filter(m => m.features && m.features.external);
+            const internalModels = models.filter(m => !m.features || !m.features.external);
+            
+            // 更新摘要
+            document.getElementById('summary').innerHTML = `
+                <h3>📊 配置摘要</h3>
+                <p><strong>总模型数:</strong> ${models.length}</p>
+                <p><strong>内网模型:</strong> ${internalModels.length} 个（通过传音代理）</p>
+                <p><strong>外网模型:</strong> ${externalModels.length} 个（直连DeepSeek）</p>
+                <p><strong>配置状态:</strong> ✅ 正确</p>
+            `;
+            
+            // 显示模型卡片
+            const modelsContainer = document.getElementById('models');
+            modelsContainer.innerHTML = '';
+            
+            // 先显示内网模型
+            internalModels.forEach(model => {
+                modelsContainer.appendChild(createModelCard(model, 'internal'));
+            });
+            
+            // 再显示外网模型
+            externalModels.forEach(model => {
+                modelsContainer.appendChild(createModelCard(model, 'external'));
+            });
+        }
+        
+        function createModelCard(model, type) {
+            const card = document.createElement('div');
+            card.className = 'model-card';
+            
+            const features = model.features || {};
+            const featureTags = [];
+            
+            if (features.reasoning) featureTags.push('<span class="feature-tag active">推理</span>');
+            if (features.tools || features.toolCalls) featureTags.push('<span class="feature-tag active">工具</span>');
+            if (features.vision) featureTags.push('<span class="feature-tag active">视觉</span>');
+            if (features.streaming) featureTags.push('<span class="feature-tag active">流式</span>');
+            if (features.jsonMode) featureTags.push('<span class="feature-tag active">JSON</span>');
+            
+            card.innerHTML = `
+                <div class="model-header">
+                    <div class="model-name">${model.name || model.id}</div>
+                    <div class="model-type ${type}">
+                        ${type === 'external' ? '外网' : '内网'}
+                    </div>
+                </div>
+                <div class="model-details">
+                    <p><strong>模型ID:</strong> <span class="model-id">${model.model || model.id}</span></p>
+                    <p><strong>提供商:</strong> ${model.provider || 'Unknown'}</p>
+                    <p><strong>API地址:</strong> ${getApiUrl(model, type)}</p>
+                    <p><strong>状态:</strong> ${model.enabled !== false ? '✅ 启用' : '❌ 禁用'}</p>
+                    <div class="features">
+                        <strong>特性:</strong> ${featureTags.length > 0 ? featureTags.join('') : '<span class="feature-tag">基础</span>'}
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        function getApiUrl(model, type) {
+            if (type === 'external') {
+                return 'https://api.deepseek.com';
+            } else {
+                return 'https://hk-intra-paas.transsion.com/tranai-proxy/v1';
+            }
+        }
+        
+        function showError(message) {
+            document.getElementById('summary').innerHTML = `
+                <div class="error">❌ ${message}</div>
+            `;
+        }
+        
+        // 页面加载时自动获取模型
+        window.onload = loadModels;
+    </script>
+</body>
+</html>

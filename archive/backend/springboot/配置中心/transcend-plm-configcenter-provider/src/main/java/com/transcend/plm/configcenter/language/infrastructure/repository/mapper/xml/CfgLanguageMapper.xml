@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.language.infrastructure.repository.mapper.CfgLanguageMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.language.infrastructure.repository.po.CfgLanguagePo">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result  property="items" column="items"  jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,code,
+        name,description,enable_flag,null_able,`length`,
+        group_name,data_type,db_key,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time
+    </sql>
+</mapper>

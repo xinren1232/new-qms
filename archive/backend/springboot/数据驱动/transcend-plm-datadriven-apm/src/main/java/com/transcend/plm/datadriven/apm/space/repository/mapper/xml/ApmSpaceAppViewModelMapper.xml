@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmSpaceAppViewModelMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmSpaceAppViewModelPo">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result column="config_content" jdbcType="VARCHAR" property="configContent"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,code,
+        `name`,space_app_bid,config_content
+    </sql>
+    <insert id="copyBySpaceAppBid">
+        INSERT INTO apm_space_app_view_model (bid,code,`name`,space_app_bid, enable_flag, config_content)
+        SELECT bid,code,`name`,#{newSpaceAppBid},enable_flag, config_content from apm_space_app_view_model space_app_bid = #{oldSpaceAppBid}
+    </insert>
+
+    <insert id="batchCopyBySpaceAppBid">
+        <foreach collection="list" item="item" index="index" separator=";">
+        INSERT INTO apm_space_app_view_model (bid,code,`name`,space_app_bid, enable_flag, config_content)
+        SELECT bid,code,`name`,#{item.newSpaceAppBid},enable_flag, config_content
+        from apm_space_app_view_model where space_app_bid = #{item.oldSpaceAppBid}
+        </foreach>
+    </insert>
+
+    <select id="getByCodeAndSpaceAppBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from apm_space_app_view_model
+        where code = #{code}
+        and space_app_bid = #{spaceAppBid}
+        limit 1
+    </select>
+
+</mapper>

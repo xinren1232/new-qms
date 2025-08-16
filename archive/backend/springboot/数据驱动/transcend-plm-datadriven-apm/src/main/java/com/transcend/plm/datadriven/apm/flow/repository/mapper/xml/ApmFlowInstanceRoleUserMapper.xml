@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.flow.repository.mapper.ApmFlowInstanceRoleUserMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.flow.repository.po.ApmFlowInstanceRoleUser">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="instanceBid" column="instance_bid" jdbcType="VARCHAR"/>
+            <result property="roleBid" column="role_bid" jdbcType="VARCHAR"/>
+            <result property="userNo" column="user_no" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,model_code,instance_bid,
+        role_bid,user_no,created_time,
+        created_by,tenant_id,enable_flag,
+        delete_flag,name
+    </sql>
+
+    <delete id="deleteByIds">
+        delete from apm_flow_instance_role_user where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteByInstanceBidAndRoleBids">
+        delete from apm_flow_instance_role_user
+        where instance_bid = #{instanceBid}
+          <if test="roleBids != null and roleBids.size() > 0">
+            and role_bid in
+            <foreach collection="roleBids" item="roleBid" open="(" separator="," close=")">
+                #{roleBid}
+            </foreach>
+          </if>
+    </delete>
+    <delete id="deleteByInstanceBidAndLifeCycleCode">
+        delete from apm_flow_instance_role_user
+        where instance_bid = #{instanceBid} and life_cycle_code = #{lifeCycleCode}
+        <if test="roleBids != null and roleBids.size() > 0">
+            and role_bid in
+            <foreach collection="roleBids" item="roleBid" open="(" separator="," close=")">
+                #{roleBid}
+            </foreach>
+        </if>
+    </delete>
+    <delete id="deleteByInstanceBids">
+        delete from apm_flow_instance_role_user
+        where instance_bid in
+        <foreach collection="instanceBids" item="instanceBid" open="(" separator="," close=")">
+            #{instanceBid}
+        </foreach>
+    </delete>
+    <select id="queryNodeUsersByInstanceBids"
+            resultType="com.transcend.plm.datadriven.apm.flow.repository.po.ApmFlowInstanceRoleUser">
+        select
+        t2.instance_bid instance_bid, t2.user_no user_no
+        from
+        apm_flow_instance_node t1
+        inner join apm_flow_instance_role_user t2 on
+        t1.instance_bid = t2.instance_bid
+        where
+        t1.node_state = '1'
+        and t1.instance_bid in
+        <foreach collection="instanceBids" item="instanceBid" open="(" separator="," close=")">
+            #{instanceBid}
+        </foreach>
+        <!--and JSON_CONTAINS(t1.node_role_bids , CONCAT('"',t2.role_bid,'"') )-->
+        and (JSON_CONTAINS(t1.node_role_bids, CONCAT('"', t2.role_bid, '"'))
+        or JSON_CONTAINS(t1.complate_role_bids, CONCAT('"', t2.role_bid, '"')))
+    </select>
+</mapper>

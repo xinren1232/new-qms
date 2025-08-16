@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "rootDir": "./",
+    "target": "esnext",
+    "module": "esnext",
+    "skipLibCheck": true,
+    "useDefineForClassFields": true,
+    // 强制文件名大小写一致
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "isolatedModules": true,
+    "strict": true,
+    "allowJs": true,
+    "jsx": "preserve",
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@@/*": [
+        "src/components/*"
+      ]
+    },
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable",
+      "scripthost"
+    ]
+  },
+  "vueCompilerOptions": {
+    "target": 2.7
+  },
+  // "include": [
+  //   "src/**/*.vue"
+  // ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "public"
+  ]
+}

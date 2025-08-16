@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.ApmDepartmentBackupMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmDepartmentBackupPo">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="parentBid" column="parent_bid" jdbcType="VARCHAR"/>
+            <result property="deptNo" column="dept_no" jdbcType="VARCHAR"/>
+            <result property="parentNo" column="parent_no" jdbcType="VARCHAR"/>
+            <result property="level" column="level" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,tenant_id,
+        created_by,created_time,updated_by,
+        enable_flag,updated_time,delete_flag,
+        `name`,parent_bid,dept_no,parent_no,
+        `level`
+    </sql>
+</mapper>

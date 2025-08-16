@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.powerjob.notify.mapper.JobCommonMapper">
+
+
+
+    <update id="deletePersonmgrBakData">
+        truncate table transcend_model_personmgr_bak
+    </update>
+
+    <update id="insertPersonmgrBakData">
+        INSERT INTO transcend_model_personmgr_bak ( employee_no, position_mgr, product_field )
+        SELECT
+          employee_no,
+          position_mgr,
+          product_field
+        FROM
+            transcend_model_personmgr
+    </update>
+    <update id="deletePersonmgrData">
+        truncate table transcend_model_personmgr
+    </update>
+
+    <update id="insertPersonmgrData">
+        insert into
+            transcend_model_personMgr (
+            bid,
+            data_bid,
+            name,
+            real_name,
+            employee_no,
+            dimission_date,
+            employ_date,
+            is_on_duty,
+            location,
+            dept_no,
+            life_cycle_code,
+            lc_model_code,
+            lc_templ_bid,
+            lc_templ_version,
+            model_code,
+            enable_flag,
+            delete_flag,
+            tenant_id,
+            created_by,
+            space_bid,
+            space_app_bid,
+            parent_bid,
+            sort,
+            multi_tree_head,
+            permission_bid,
+            departmennt,
+            position_mgr,
+            product_field
+        )
+        select
+            tr.uid as bid,
+            tr.uid as data_bid,
+            tr.real_name as name,
+            tr.real_name,
+            tr.employee_no as employee_no,
+            tr.dimission_date as dimission_date,
+            tr.employ_date as employ_date,
+            case tr.is_on_duty when 3 then '在职' else '已离职' end as is_on_duty_str,
+            tr.location,
+            tr.dept_no,
+            '00A' as life_cycle_code,
+            'A52:00A' as lc_model_code,
+            '11' as lc_templ_bid,
+            'V1' as lc_templ_version,
+            'A52' as model_code,
+            0 as enable_flag,
+            0 as delete_flag,
+            100 as tenant_id,
+            '18649100' as created_by,
+            '1287796004629848064' as space_bid,
+            '1287796004667596817' as space_app_bid,
+            0 as parent_bid,
+            0 as sort,
+            0 as multi_tree_head,
+            'APP:1287796004667596817' as permission_bid,
+            tr.dept_name,
+            tb.position_mgr,
+            tb.product_field
+        from
+            tr_employee tr left join transcend_model_personmgr_bak tb on tr.employee_no = tb.employee_no
+    </update>
+
+    <update id="deletePiProjectRoleMonth">
+       delete from  pi_project_role_month where month = DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH), '%Y-%m')
+    </update>
+
+    <update id="insertPiProjectRoleMonth">
+        insert into pi_project_role_month
+        select
+        t5.identity as user_no,
+        e1.real_name as user_name,
+        t4.name as role_name,
+        t2.name as project_name,
+        t3.name as space_name,
+        DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH), '%Y-%m') as month,
+        t5.`input_percentage`
+        from
+        apm_sphere t1,
+        transcend_model_project t2,
+        `apm_space` t3,
+        apm_role t4,
+        apm_role_identity t5
+        LEFT JOIN tr_employee e1 on e1.employee_no = t5.identity
+        where
+        t1.biz_bid = t2.bid
+        and t1.type = 'instance'
+        and t2.`delete_flag` = 0
+        and t3.bid = t2.space_bid
+        and t4.sphere_bid = t1.bid
+        and t5.role_bid = t4.bid
+        and t5.type = 'employee'
+        and t1.`delete_flag` = 0
+        and t3.`delete_flag` = 0
+        and t4.`delete_flag` = 0
+        and t5.`delete_flag` = 0
+        and t4.code != 'all'
+        AND t2.space_bid IN (1211971953936125952, 1211972323100356608,1197899366236762112,1197848312950370304,1211972465895436288,1211972613695950848,1211972729609736192,1197832176082956288,1211972858754920448,1211962812647690240,1212049868082204672)
+    </update>
+
+</mapper>

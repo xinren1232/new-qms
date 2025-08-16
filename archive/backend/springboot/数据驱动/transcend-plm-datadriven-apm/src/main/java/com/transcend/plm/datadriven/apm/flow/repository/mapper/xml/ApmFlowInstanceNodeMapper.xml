@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.flow.repository.mapper.ApmFlowInstanceNodeMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.flow.repository.po.ApmFlowInstanceNode">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="webBid" column="web_bid" jdbcType="VARCHAR"/>
+            <result property="templateNodeBid" column="template_node_bid" jdbcType="VARCHAR"/>
+            <result property="templateNodeDataBid" column="template_node_data_bid" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+            <result property="instanceBid" column="instance_bid" jdbcType="VARCHAR"/>
+            <result property="beforeNodeBids" column="before_node_bids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="flowTemplateBid" column="flow_template_bid" jdbcType="VARCHAR"/>
+            <result property="nodeState" column="node_state" jdbcType="INTEGER"/>
+            <result property="version" column="version" jdbcType="VARCHAR"/>
+            <result property="nodeName" column="node_name" jdbcType="VARCHAR"/>
+            <result property="nodeRoleBids" column="node_role_bids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="nodeDeleteFlag" column="node_delete_flag" jdbcType="BIT"/>
+            <result property="nodeDeleteRoleBids" column="node_delete_role_bids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="nodeType" column="node_type" jdbcType="INTEGER"/>
+            <result property="complateType" column="complate_type" jdbcType="INTEGER"/>
+            <result property="complateRoleBids" column="complate_role_bids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="displayCondition" column="display_condition" jdbcType="INTEGER"/>
+            <result property="layout" column="layout" jdbcType="OTHER"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,node_bid,web_bid,
+        model_code,space_app_bid,instance_bid,before_node_bids,
+        flow_template_bid,node_state,version,
+        node_name,node_role_bids,node_delete_flag,
+        node_delete_role_bids,node_type,complate_type,
+        complate_role_bids,display_condition,layout,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time,delete_flag,
+        enable_flag
+    </sql>
+    <delete id="deleteByInstanceBid">
+        delete from apm_flow_instance_node
+        where instance_bid = #{instanceBid}
+    </delete>
+    <delete id="deleteByInstanceBids">
+        delete from apm_flow_instance_node
+        where instance_bid in
+        <foreach collection="instanceBids" item="instanceBid" open="(" separator="," close=")">
+            #{instanceBid}
+        </foreach>
+    </delete>
+
+    <update id="completeNodeByBid">
+        update apm_flow_instance_node set node_state = 2 where bid = #{bid}
+    </update>
+</mapper>

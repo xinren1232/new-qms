@@ -1,0 +1,209 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "QMS-AI系统概览",
+    "tags": ["qms-ai", "overview"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "系统健康状态",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qms_ai_system_health",
+            "legendFormat": "{{component}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            },
+            "mappings": [
+              {"options": {"0": {"text": "不健康"}}, "type": "value"},
+              {"options": {"1": {"text": "健康"}}, "type": "value"}
+            ]
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "HTTP请求QPS",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(qms_ai_http_requests_total[5m])",
+            "legendFormat": "{{method}} {{route}}"
+          }
+        ],
+        "yAxes": [
+          {"label": "请求/秒", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "HTTP响应时间",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(qms_ai_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50%分位"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(qms_ai_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95%分位"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(qms_ai_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "99%分位"
+          }
+        ],
+        "yAxes": [
+          {"label": "秒", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "AI模型请求统计",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(qms_ai_model_requests_total[5m])",
+            "legendFormat": "{{model_provider}}/{{model_name}} - {{status}}"
+          }
+        ],
+        "yAxes": [
+          {"label": "请求/秒", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "活跃用户数",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qms_ai_active_users",
+            "legendFormat": "活跃用户"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "总对话数",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qms_ai_conversations_total",
+            "legendFormat": "总对话数"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "总消息数",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qms_ai_messages_total",
+            "legendFormat": "总消息数"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "错误率",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qms_ai_error_rate",
+            "legendFormat": "{{service}} - {{error_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "数据库连接数",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "qms_ai_db_connections_active",
+            "legendFormat": "{{database_type}}"
+          }
+        ],
+        "yAxes": [
+          {"label": "连接数", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20}
+      },
+      {
+        "id": 10,
+        "title": "缓存命中率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "qms_ai_cache_hit_rate",
+            "legendFormat": "{{cache_type}}"
+          }
+        ],
+        "yAxes": [
+          {"label": "百分比", "min": 0, "max": 100}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20}
+      }
+    ]
+  }
+}

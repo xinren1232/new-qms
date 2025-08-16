@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmSpaceAppMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmSpaceApp">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="spaceBid" column="space_bid" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="iconUrl" column="icon_url" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="sphereBid" column="sphere_bid" jdbcType="VARCHAR"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="INTEGER"/>
+            <result property="visibleFlag" column="visible_flag" jdbcType="INTEGER"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="isVersionObject" column="is_version_object" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,space_bid,
+        model_code,`name`,sort,sphere,created_time,
+        updated_time,created_by,updated_by,
+        tenant_id,is_version_object
+    </sql>
+    <insert id="copyBySpaceBid">
+        INSERT INTO apm_space_app (
+        bid,space_bid,
+        model_code,`name`,sort,sphere,created_time,
+        updated_time,created_by,updated_by,
+        tenant_id,is_version_object)
+        SELECT  #{newSpaceAppBid},#{newSpaceBid},
+                model_code,`name`,sort,sphere,created_time,
+                updated_time,created_by,updated_by,
+                tenant_id,is_version_object) FROM apm_space_app WHERE space_bid = #{oldSpaceBid}
+    </insert>
+
+    <insert id="batchCopyBySpaceBid">
+        <foreach collection="list" item="item" index="index" separator=";">
+            INSERT INTO apm_space_app (
+            bid,space_bid,
+            model_code,`name`,sort,sphere,created_time,
+            updated_time,created_by,updated_by,
+            tenant_id,is_version_object)
+            SELECT  #{item.newSpaceAppBid},#{item.newSpaceBid},
+            model_code,`name`,sort,sphere,created_time,
+            updated_time,created_by,updated_by,
+            tenant_id,is_version_object) FROM apm_space_app WHERE space_bid = #{item.oldSpaceBid}
+        </foreach>
+
+    </insert>
+    <update id="updateSort" parameterType="java.util.List">
+        <foreach collection="list" item="item" separator=";">
+            update apm_space_app set sort = #{item.sort} where bid = #{item.bid}
+        </foreach>
+    </update>
+
+    <select id="listSpaceInfo" resultType="com.transcend.plm.datadriven.apm.space.pojo.vo.ApmSpaceAppVo">
+        select t1.name,t2.space_bid as spaceBid,t2.bid,t2.model_code  from apm_space t1,apm_space_app t2 where t1.bid = t2.space_bid and t2.bid in
+        <foreach collection="spaceAppBids" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+</mapper>

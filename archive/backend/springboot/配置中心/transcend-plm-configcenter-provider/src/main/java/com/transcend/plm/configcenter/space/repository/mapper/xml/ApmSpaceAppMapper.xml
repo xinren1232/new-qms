@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.space.repository.mapper.ApmSpaceAppMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.space.repository.po.ApmSpaceApp">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="bid" column="bid" jdbcType="VARCHAR"/>
+        <result property="spaceBid" column="space_bid" jdbcType="VARCHAR"/>
+        <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+        <result property="iconUrl" column="icon_url" jdbcType="VARCHAR"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="sort" column="sort" jdbcType="INTEGER"/>
+        <result property="sphereBid" column="sphere_bid" jdbcType="VARCHAR"/>
+        <result property="deleteFlag" column="delete_flag" jdbcType="INTEGER"/>
+        <result property="enableFlag" column="enable_flag" jdbcType="INTEGER"/>
+        <result property="visibleFlag" column="visible_flag" jdbcType="INTEGER"/>
+        <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+        <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+        <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+        <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+        <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+        <result property="isVersionObject" column="is_version_object" jdbcType="INTEGER"/>
+    </resultMap>
+
+
+    <!--    getByMc 根据modelCode获取所有应用数据-->
+    <select id="getByMc" parameterType="string" resultMap="BaseResultMap">
+        SELECT
+            t.id,
+            t.bid,
+            t.space_bid,
+            t.type,
+            t.model_code,
+            t.NAME,
+            t.enable_flag,
+            t.visible_flag,
+            t.is_version_object
+        FROM
+            apm_space_app t
+        WHERE
+            t.delete_flag = 0
+          AND t.model_code = #{modelCode}
+    </select>
+
+    <!--    getByMcs 根据modelCodes获取所有应用数据-->
+    <select id="getByMcs" parameterType="collection" resultMap="BaseResultMap">
+        SELECT
+            t.id,
+            t.bid,
+            t.space_bid,
+            t.type,
+            t.model_code,
+            t.NAME,
+            t.enable_flag,
+            t.visible_flag,
+            t.is_version_object
+        FROM
+            apm_space_app t
+        WHERE
+            t.delete_flag = 0
+          AND t.model_code in
+        <foreach collection="modelCodes" item="modelCode" open="(" separator="," close=")">
+          #{modelCode}
+        </foreach>
+    </select>
+
+</mapper>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.MessageRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.MessageRecord">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="messageId" column="message_id" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="state" column="state" jdbcType="VARCHAR"/>
+            <result property="errLevel" column="err_level" jdbcType="VARCHAR"/>
+            <result property="errMsg" column="err_msg" jdbcType="VARCHAR"/>
+            <result property="content" column="content" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="INTEGER"/>
+            <result property="retryTimes" column="retry_times" jdbcType="INTEGER"/>
+
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, message_id, type, state, err_level, err_msg, content, created_time, updated_time, created_by, updated_by, delete_flag, retry_times
+    </sql>
+
+    <delete id="physicsRemoveByIds">
+        delete from message_record where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

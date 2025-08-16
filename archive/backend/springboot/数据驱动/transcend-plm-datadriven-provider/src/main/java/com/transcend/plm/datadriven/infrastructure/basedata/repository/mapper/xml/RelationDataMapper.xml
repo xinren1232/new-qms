@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.infrastructure.basedata.repository.mapper.RelationDataMapper">
+
+    <select id="listRelationDataFloat"
+            resultType="com.transcend.plm.datadriven.api.model.relation.vo.RelationAndTargetVo">
+        select
+        <include refid="TargetSelectPropertySql"/>,<include refid="RelationSelectPropertySql"/>
+        from
+            <include refid="RelationTableNameSql"/> join <include refid="TargetTableNameSql"/>
+        on r.target_data_bid = t.data_bid
+        <where>
+            <include refid="RelationWhereQueryWrapperSql"/>
+            <include refid="TargetWhereQueryWrapperSql"/>
+        </where>
+    </select>
+
+    <!--自上向下寻址的跨层级查询-->
+    <select id="listCrossHierarchyDown"
+            resultType="com.transcend.plm.datadriven.api.model.MBaseData">
+        SELECT
+            p.*
+        FROM
+            {r.targetTable} t
+                INNER JOIN {r.relationTable1} r1 ON t.bid = r1.source_bid
+                INNER JOIN {r.relationTable2} r2 ON r1.target_bid = r2.source_bid
+        WHERE
+            rn.source_bid = {r.sourceBid};
+                    /*条件 TODO*/
+    </select>
+
+    <!--
+       SELECT
+            p.*
+        FROM
+            transcend_model_project p
+                INNER JOIN transcend_model_A1U pv ON p.bid = pv.source_bid
+                INNER JOIN transcend_model_A1V vr ON pv.target_bid = vr.source_bid
+        WHERE
+            vr.target_bid = '1175025069194350592';
+    -->
+
+    <!--自下向上寻址的跨层级查询-->
+    <select id="listPageCrossHierarchyUp"
+            resultType="com.transcend.plm.datadriven.api.model.MObject">
+        SELECT
+            <include refid="CrossUpSelectPropertySql" />
+        FROM <include refid="CrossUpTableNameSql"/> s
+        <choose>
+            <when test="r.relationTables != null and r.relationTables.size() > 0">
+                <foreach collection="r.relationTables" item="relationTable" index="index" >
+                    INNER JOIN <include refid="CrossUpRelationTableNameSql"/> r_${index+1} ON r_${index+1}.source_bid =
+                    <if test="index == 0">
+                        s.bid
+                    </if>
+                    <if test="index != 0">
+                        r_${index}.target_bid
+                    </if>
+                </foreach>
+                WHERE 1 = 1
+                AND r_${r.relationTables.size}.target_bid = #{r.targetBid}
+            </when>
+            <otherwise>
+                WHERE 1 = 1
+                    <if test="r.targetBid != null and r.targetBid != '' ">
+                        AND s.bid = #{r.targetBid}
+                    </if>
+            </otherwise>
+        </choose>
+        <include refid="CrossRelation_WhereQueryWrapperSql" />
+        <include refid="CrossRelation_OrderQuerySql" />
+    </select>
+
+
+    <select id="listRelationDataFixed"
+            resultType="com.transcend.plm.datadriven.api.model.relation.vo.RelationAndTargetVo">
+        select
+        <include refid="TargetSelectPropertySql"/>,<include refid="RelationSelectPropertySql"/>
+        from
+            <include refid="RelationTableNameSql"/> join <include refid="TargetTableNameSql"/>
+        on r.target_bid = t.bid
+        <where>
+            <include refid="RelationWhereQueryWrapperSql"/>
+            <include refid="TargetWhereQueryWrapperSql"/>
+        </where>
+    </select>
+
+
+    <sql id="TargetWhereQueryWrapperSql">
+        <if test="targetQueryWrappers != null and targetQueryWrappers.size()>0">
+            <foreach collection="targetQueryWrappers" item="mqww">
+                <if test="mqww.relation == null or mqww.relation == ''">
+                and t.${mqww.property} ${mqww.condition}
+                <choose>
+                    <when test="mqww.isList != null and mqww.isList">
+                        (
+                        <foreach collection="mqww.values" item="vv" separator=",">
+                            #{vv}
+                        </foreach>
+                        )
+                    </when>
+                    <otherwise>
+                        #{mqww.value}
+                    </otherwise>
+                </choose>
+                </if>
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="RelationWhereQueryWrapperSql">
+        <if test="relationQueryWrappers != null and relationQueryWrappers.size()>0">
+            <foreach collection="relationQueryWrappers" item="mqw">
+                <if test="mqw.relation == null or mqw.relation == ''">
+                and r.${mqw.property} ${mqw.condition}
+                <choose>
+                    <when test="mqw.isList != null and mqw.isList">
+                        (
+                        <foreach collection="mqw.values" item="v" separator=",">
+                            #{v}
+                        </foreach>
+                        )
+                    </when>
+                    <otherwise>
+                        #{mqw.value}
+                    </otherwise>
+                </choose>
+                </if>
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="OrderQuerySql">
+        <if test="orderQueries != null and orderQueries.size()>0">
+            ORDER BY
+            <foreach collection="orderQueries" item="o" separator=",">
+                <if test="o.property != null and o.property != ''">
+                    ${o.property}
+                </if>
+                <if test="o.desc != null and o.desc">
+                    DESC
+                </if>
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="RelationTableNameSql">
+        <choose>
+            <when test="relationTable.useLogicTableName != null and relationTable.useLogicTableName == 1">
+                ${RelationTable.logicTableName} r
+            </when>
+            <when test="relationTable.tableNameSuffix != null">
+                ${relationTable.tenantCode}_model_${relationTable.logicTableName}_${relationTable.tableNameSuffix} r
+            </when>
+            <otherwise>
+                ${relationTable.tenantCode}_model_${relationTable.logicTableName} r
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="TargetTableNameSql">
+        <choose>
+            <when test="targetTable.useLogicTableName != null and targetTable.useLogicTableName == 1">
+                ${targetTable.logicTableName} t
+            </when>
+            <when test="targetTable.tableNameSuffix != null">
+                ${targetTable.tenantCode}_model_${targetTable.logicTableName}_${targetTable.tableNameSuffix} t
+            </when>
+            <otherwise>
+                ${targetTable.tenantCode}_model_${targetTable.logicTableName} t
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="RelationSelectPropertySql">
+        <trim suffixOverrides=",">
+            <foreach collection="relationTable.tableAttributeDefinitions" item="attr" separator=",">
+                <choose>
+                    <when test="attr.baseFlag == 1">
+                        r.${attr.columnName} as `relation.${attr.property}`
+                    </when>
+                    <otherwise>
+                        r.ext->>'<![CDATA[$]]>.${attr.columnName}' as `relation.${attr.property}`
+                    </otherwise>
+                </choose>
+            </foreach>
+        </trim>
+    </sql>
+
+    <sql id="TargetSelectPropertySql">
+        <trim suffixOverrides=",">
+            <foreach collection="targetTable.tableAttributeDefinitions" item="attr" separator=",">
+                <choose>
+                    <when test="attr.baseFlag == 1">
+                        t.${attr.columnName} as `${attr.property}`
+                    </when>
+                    <otherwise>
+                        t.ext->>'<![CDATA[$]]>.${attr.columnName}' as `${attr.property}`
+                    </otherwise>
+                </choose>
+            </foreach>
+        </trim>
+    </sql>
+
+    <sql id="CrossUpTableNameSql">
+        <choose>
+            <when test="r.sourceTable.useLogicTableName != null and r.sourceTable.useLogicTableName == 1">
+                ${r.sourceTable.logicTableName}
+            </when>
+            <otherwise>
+                ${r.sourceTable.tenantCode}_model_${r.sourceTable.logicTableName}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="CrossUpRelationTableNameSql">
+        <choose>
+            <when test="relationTable.useLogicTableName != null and relationTable.useLogicTableName == 1">
+                ${relationTable.logicTableName}
+            </when>
+            <otherwise>
+                ${relationTable.tenantCode}_model_${relationTable.logicTableName}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="PathChainTableNameSql">
+        <choose>
+            <when test="query.relationTable.useLogicTableName != null and query.relationTable.useLogicTableName == 1">
+                ${query.relationTable.logicTableName}
+            </when>
+            <otherwise>
+                ${query.relationTable.tenantCode}_model_${query.relationTable.logicTableName}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="PathChainInstanceTableNameSql">
+        <choose>
+            <when test="query.instanceTable.useLogicTableName != null and query.instanceTable.useLogicTableName == 1">
+                ${query.instanceTable.logicTableName}
+            </when>
+            <otherwise>
+                ${query.instanceTable.tenantCode}_model_${query.instanceTable.logicTableName}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="CrossUpSelectPropertySql">
+        <trim suffixOverrides=",">
+            <foreach collection="r.sourceTable.tableAttributeDefinitions" item="attr" separator=",">
+                <choose>
+                    <when test="attr.baseFlag == 1">
+                        s.${attr.columnName} as `${attr.property}`
+                    </when>
+                    <otherwise>
+                        s.ext->>'<![CDATA[$]]>.${attr.columnName}' as `${attr.property}`
+                    </otherwise>
+                </choose>
+            </foreach>
+        </trim>
+    </sql>
+
+
+    <sql id="CrossRelation_WhereQueryWrapperSql">
+
+        <if test="queryWrappers != null and queryWrappers.size()>0">
+              AND
+            <foreach collection="queryWrappers" item="mqw">
+                <choose>
+                    <when test="mqw.relation != null and mqw.relation">
+                        ${mqw.sqlRelation}
+                    </when>
+                    <otherwise>
+                        s.${mqw.property} ${mqw.condition}
+                        <choose>
+                            <when test="mqw.isList != null and mqw.isList">
+                                (
+                                <foreach collection="mqw.values" item="v" separator=",">
+                                    #{v}
+                                </foreach>
+                                )
+                            </when>
+                            <otherwise>
+                                #{mqw.value}
+                            </otherwise>
+                        </choose>
+                    </otherwise>
+                </choose>
+            </foreach>
+        </if>
+
+    </sql>
+
+    <sql id="PathChain_WhereQueryWrapperSql">
+
+        <if test="r.sourceQueries != null and r.sourceQueries.size()>0">
+            AND
+            <foreach collection="r.sourceQueries" item="mqw">
+                <choose>
+                    <when test="mqw.relation != null and mqw.relation">
+                        ${mqw.sqlRelation}
+                    </when>
+                    <otherwise>
+                        s.${mqw.property} ${mqw.condition}
+                        <choose>
+                            <when test="mqw.isList != null and mqw.isList">
+                                (
+                                <foreach collection="mqw.values" item="v" separator=",">
+                                    #{v}
+                                </foreach>
+                                )
+                            </when>
+                            <otherwise>
+                                #{mqw.value}
+                            </otherwise>
+                        </choose>
+                    </otherwise>
+                </choose>
+            </foreach>
+        </if>
+
+    </sql>
+
+    <sql id="PathChain_WherePathQueryWrapperSql">
+
+        <if test="query.queries != null and query.queries.size()>0">
+            AND
+            <foreach collection="query.queries" item="mqw">
+                <choose>
+                    <when test="mqw.relation != null and mqw.relation">
+                        ${mqw.sqlRelation}
+                    </when>
+                    <otherwise>
+                        i_${index+1}.${mqw.property} ${mqw.condition}
+                        <choose>
+                            <when test="mqw.isList != null and mqw.isList">
+                                (
+                                <foreach collection="mqw.values" item="v" separator=",">
+                                    #{v}
+                                </foreach>
+                                )
+                            </when>
+                            <otherwise>
+                                #{mqw.value}
+                            </otherwise>
+                        </choose>
+                    </otherwise>
+                </choose>
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="CrossRelation_OrderQuerySql">
+        <if test="orderQueries != null and orderQueries.size()>0">
+            ORDER BY
+            <foreach collection="orderQueries" item="o" separator=",">
+                <if test="o.property != null and o.property != ''">
+                    s.${o.property}
+                </if>
+                <choose>
+                    <when test="o.desc != null and o.desc">
+                        DESC
+                    </when>
+                    <otherwise>
+                        ASC
+                    </otherwise>
+                </choose>
+
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="relationListPageByPathChain" resultType="com.transcend.plm.datadriven.api.model.MObject">
+        SELECT
+        <include refid="CrossUpSelectPropertySql" />
+        FROM <include refid="CrossUpTableNameSql"/> s
+        <choose>
+            <when test="r.pathQueries != null and r.pathQueries.size() > 0">
+                <foreach collection="r.pathQueries" item="query" index="index" >
+                    INNER JOIN <include refid="PathChainTableNameSql"/> r_${index+1} ON
+                    <include refid="PathChainRelationJoinSql" />
+
+                    <if test="query.queries != null and r.pathQueries.size() > 0">
+                        INNER JOIN <include refid="PathChainInstanceTableNameSql"/> i_${index+1} on
+
+                        <if test='query.direction == "up"'>
+                            i_${index+1}.bid =  r_${index+1}.source_bid
+                        </if>
+
+                        <if test='query.direction == "down"'>
+                            i_${index+1}.bid =  r_${index+1}.target_bid
+                        </if>
+
+                        <include refid="PathChain_WherePathQueryWrapperSql" />
+
+                    </if>
+
+                </foreach>
+                WHERE 1 = 1
+                <if test='r.direction == "up"'>
+                    AND r_${r.pathQueries.size}.source_bid = #{r.currentSourceBid}
+                </if>
+
+                <if test='r.direction == "down"'>
+                    AND r_${r.pathQueries.size}.target_bid = #{r.currentSourceBid}
+                </if>
+            </when>
+            <otherwise>
+                WHERE 1 = 1
+                <if test="r.currentSourceBid != null and r.currentSourceBid != '' ">
+                    AND s.bid = #{r.currentSourceBid}
+                </if>
+                <if test="r.currentSourceBid == null or r.currentSourceBid == '' ">
+                    AND s.space_bid = #{r.spaceBid}
+                </if>
+            </otherwise>
+        </choose>
+        <include refid="PathChain_WhereQueryWrapperSql" />
+        <include refid="OrderQuerySql" />
+    </select>
+
+    <sql id="PathChainRelationJoinSql">
+        <if test='query.direction == "up"'>
+            r_${index+1}.target_bid =
+
+            <if test="index == 0">
+                s.bid
+            </if>
+
+            <if test="index != 0">
+
+                <if test='query.preDirection == "up"'>
+                    r_${index}.source_bid
+                </if>
+
+                <if test='query.preDirection == "down"'>
+                    r_${index}.target_bid
+                </if>
+
+            </if>
+        </if>
+
+        <if test='query.direction == "down"'>
+            r_${index+1}.source_bid =
+
+            <if test="index == 0">
+                s.bid
+            </if>
+
+            <if test="index != 0">
+
+                <if test='query.preDirection == "up"'>
+                    r_${index}.source_bid
+                </if>
+
+                <if test='query.preDirection == "down"'>
+                    r_${index}.target_bid
+                </if>
+
+            </if>
+
+        </if>
+        and r_${index+1}.delete_flag = 0
+    </sql>
+
+</mapper>

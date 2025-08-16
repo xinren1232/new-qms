@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.permission.infrastructure.repository.mapper.PermissionPlmOperationRuleItemMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.permission.infrastructure.repository.po.PermissionPlmOperationRuleItem">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="permissionBid" column="permission_bid" jdbcType="VARCHAR"/>
+            <result property="roleCode" column="role_code" jdbcType="VARCHAR"/>
+            <result property="path" column="path" jdbcType="VARCHAR"/>
+            <result property="operationDetail" column="operation_detail" jdbcType="BIT"/>
+            <result property="operationEdit" column="operation_edit" jdbcType="BIT"/>
+            <result property="operationDelete" column="operation_delete" jdbcType="BIT"/>
+            <result property="operationRevise" column="operation_revise" jdbcType="BIT"/>
+            <result property="operationPromote" column="operation_promote" jdbcType="BIT"/>
+            <result property="operation1" column="operation_1" jdbcType="BIT"/>
+            <result property="operation2" column="operation_2" jdbcType="BIT"/>
+            <result property="operation3" column="operation_3" jdbcType="BIT"/>
+            <result property="operation4" column="operation_4" jdbcType="BIT"/>
+            <result property="operation5" column="operation_5" jdbcType="BIT"/>
+            <result property="operation6" column="operation_6" jdbcType="BIT"/>
+            <result property="operation7" column="operation_7" jdbcType="BIT"/>
+            <result property="operation8" column="operation_8" jdbcType="BIT"/>
+            <result property="operation9" column="operation_9" jdbcType="BIT"/>
+            <result property="operation10" column="operation_10" jdbcType="BIT"/>
+            <result property="operationStr" column="operation_str" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,permission_bid,
+        role_code,path,operation_detail,
+        operation_edit,operation_delete,operation_revise,
+        operation_promote,operation_1,operation_2,
+        operation_3,operation_4,operation_5,
+        operation_6,operation_7,operation_8,
+        operation_9,operation_10,operation_str,
+        enable_flag,delete_flag,tenant_id,
+        created_by,created_time,updated_by,
+        updated_time
+    </sql>
+    <delete id="deleteByBids">
+        delete from permission_plm_operation_rule_item where bid in
+        <foreach collection="bids" item="bid" open="(" separator="," close=")">
+            #{bid}
+        </foreach>
+    </delete>
+    <delete id="deleteByPermissionBid">
+        delete from permission_plm_operation_rule_item where permission_bid = #{permissionBid}
+    </delete>
+
+
+    <!--    saveList 批量新增数据-->
+    <insert id="saveList" parameterType="list"  >
+        insert into permission_plm_operation_rule_item
+        (bid,
+        permission_bid,
+        role_code,
+        path,
+        operation_detail,
+        operation_edit,
+        operation_delete,
+        operation_revise,
+        operation_promote,
+        operation_1,
+        operation_2,
+        operation_3,
+        operation_4,
+        operation_5,
+        operation_6,
+        operation_7,
+        operation_8,
+        operation_9,
+        operation_10,
+        operation_str,
+        enable_flag,
+        created_by,
+        created_time,
+        updated_by,
+        updated_time)
+        values
+        <foreach collection="permissionPlmOperationRuleItemNews" item="data" separator=",">
+            (
+            #{data.bid},
+            #{data.permissionBid},
+            #{data.roleCode},
+            #{data.path},
+            #{data.operationDetail},
+            #{data.operationEdit},
+            #{data.operationDelete},
+            #{data.operationRevise},
+            #{data.operationPromote},
+            #{data.operation1},
+            #{data.operation2},
+            #{data.operation3},
+            #{data.operation4},
+            #{data.operation5},
+            #{data.operation6},
+            #{data.operation7},
+            #{data.operation8},
+            #{data.operation9},
+            #{data.operation10},
+            #{data.operationStr},
+            #{data.enableFlag},
+            #{data.createdBy},
+            NOW(),
+            #{data.updatedBy},
+            NOW()
+            )
+        </foreach>
+    </insert>
+
+
+</mapper>

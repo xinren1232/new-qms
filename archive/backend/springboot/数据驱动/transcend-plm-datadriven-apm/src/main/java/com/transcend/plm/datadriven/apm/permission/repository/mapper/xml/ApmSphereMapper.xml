@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.ApmSphereMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmSphere">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="bizBid" column="biz_bid" jdbcType="VARCHAR"/>
+            <result property="pbid" column="pbid" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,biz_bid,pbid,
+        name,type,created_by,
+        created_time,tenant_id,enable_flag,
+        delete_flag
+    </sql>
+    <select id="querySpaceSphereBidBySphereBid" resultType="java.lang.String">
+        with recursive recursion (bid, pbid) as (
+        select
+        t1.bid,
+        t1.pbid
+        from
+        apm_sphere t1
+        where
+        t1.bid in
+        <foreach collection="bids" item="bid" open="(" close=")" separator=",">
+            #{bid}
+        </foreach>
+        and t1.delete_flag = 0
+        and t1.enable_flag = 1
+        union all
+        select
+        t2.bid,
+        t2.pbid
+        from
+        apm_sphere t2,
+        recursion t3
+        where
+        t2.bid = t3.pbid
+        and t2.delete_flag = 0
+        and t2.enable_flag = 1
+        )
+        select bid from recursion t where t.pbid = 0;
+    </select>
+
+    <select id="getSphereBidListByBid" resultType="java.lang.String">
+        WITH RECURSIVE Parents(bid,pbid) AS (
+            SELECT t1.bid,t1.pbid FROM apm_sphere t1
+            WHERE t1.bid = #{bid}
+              and t1.delete_flag = 0 and t1.enable_flag = 1
+            UNION ALL
+            SELECT t2.bid,t2.pbid FROM apm_sphere t2 JOIN Parents p ON t2.bid = p.pbid
+            and t2.delete_flag = 0 and t2.enable_flag = 1
+        )
+        SELECT bid FROM Parents WHERE pbid IS NOT NULL;
+    </select>
+</mapper>

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.ApmRoleMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRole">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="pbid" column="pbid" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="path" column="path" jdbcType="VARCHAR"/>
+            <result property="sphereBid" column="sphere_bid" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="roleOrigin" column="role_origin" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+            <result property="foreignBid" column="foreign_bid" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,pbid,
+        code,name,sphere_bid,
+        description,role_origin,created_time,created_by,
+        updated_time,updated_by,tenant_id,
+        enable_flag,delete_flag
+    </sql>
+
+    <select id="getRoleListByBizBidAndIdentity" resultType="java.lang.String">
+        SELECT
+            t1.bid
+        FROM
+            apm_role t1,
+            apm_sphere t2,
+            apm_role_identity t3
+        WHERE
+            t2.type = #{type}
+          AND t2.biz_bid = #{bizBid}
+          AND t2.delete_flag = 0
+          AND t1.delete_flag = 0
+          AND t1.sphere_bid = t2.bid
+          AND t3.delete_flag = 0
+          AND t3.role_bid = t1.bid
+          AND t3.type = 'employee'
+          and t3.identity = #{identity}
+    </select>
+
+    <select id="getRoleListBySphereBidAndIdentityList" resultType="java.lang.String">
+        select role_bid
+        from apm_role_identity ari inner join apm_role ar on ari.role_bid = ar.bid
+        where sphere_bid = #{sphereBid} and ari.`identity` in
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="getRoleListByJobNumAndSphereBid"
+            resultType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRole">
+        select ar.id, ar.bid as bid, pbid,
+        code,ar.name,sphere_bid,
+        description,role_origin,ar.created_time,ar.created_by,
+        updated_time,updated_by,ar.tenant_id,
+        ar.enable_flag, ar.delete_flag
+        from apm_role ar inner join apm_role_identity ari on ar.bid = ari.role_bid
+        where ari.delete_flag = 0 and ar.delete_flag = 0
+        <if test="sphereBid != null">
+            and ar.sphere_bid = #{sphereBid}
+        </if>
+        <foreach collection="list" item="item" open="and ari.identity in (" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <delete id="physicsRemove">
+            delete from apm_role
+            <where>
+                <if test="roleDto.bid != null and roleDto.bid != ''">
+                    and bid = #{roleDto.bid}
+                </if>
+                <if test="roleDto.sphereBid != null and roleDto.sphereBid != ''">
+                    and sphere_bid = #{roleDto.sphereBid}
+                </if>
+                <if test="roleDto.foreignBid != null and roleDto.foreignBid != ''">
+                    and foreign_bid = #{roleDto.foreignBid}
+                </if>
+            </where>
+
+    </delete>
+
+    <select id="getRoleListByJobNumAndSphereBidList"
+            resultType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRole">
+        select ar.id, ar.bid as bid, pbid,
+        code,ar.name,sphere_bid,
+        description,role_origin,ar.created_time,ar.created_by,
+        updated_time,updated_by,ar.tenant_id,
+        ar.enable_flag, ar.delete_flag
+        from apm_role ar inner join apm_role_identity ari on ar.bid = ari.role_bid
+        where ari.delete_flag = 0 and ar.delete_flag = 0
+        <foreach collection="sphereBids" item="item" open="and ar.sphere_bid  in (" close=")" separator=",">
+            #{item}
+        </foreach>
+        <foreach collection="list" item="item" open="and ari.identity in (" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+    <select id="getAllChildCode" resultType="java.lang.String">
+        WITH RECURSIVE role_hierarchy AS (
+            SELECT code, bid, 0 AS level
+            FROM apm_role
+            WHERE code = #{roleCode}
+              AND delete_flag = FALSE
+            UNION ALL
+            SELECT r.code, r.bid, rh.level + 1
+            FROM apm_role r INNER JOIN role_hierarchy rh ON r.parent_bid = rh.bid AND delete_flag = FALSE
+            WHERE rh.level &lt; 20)
+        SELECT code
+        FROM role_hierarchy;
+    </select>
+
+    <select id="getAllChildBid" resultType="java.lang.String">
+        WITH RECURSIVE role_hierarchy AS (
+            SELECT bid, 0 AS level
+            FROM apm_role
+            WHERE bid = #{bid}
+            AND delete_flag = FALSE
+            UNION ALL
+            SELECT r.bid, rh.level + 1
+            FROM apm_role r
+                   INNER JOIN role_hierarchy rh ON r.parent_bid = rh.bid AND delete_flag = FALSE
+            WHERE rh.level &lt; 20)
+        SELECT bid
+        FROM role_hierarchy;
+    </select>
+
+
+</mapper>

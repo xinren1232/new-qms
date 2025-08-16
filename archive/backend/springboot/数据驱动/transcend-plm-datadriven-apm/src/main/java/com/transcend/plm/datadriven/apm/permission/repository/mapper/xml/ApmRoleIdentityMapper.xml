@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.ApmRoleIdentityMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRoleIdentity">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="roleBid" column="role_bid" jdbcType="VARCHAR"/>
+            <result property="identity" column="identity" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="deptName" column="dept_name" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,role_bid,`identity`,
+        `type`,created_time,created_by,
+        tenant_id,enable_flag,delete_flag,name,dept_name
+    </sql>
+    <select id="listAllBySphereBid" resultType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRoleIdentity">
+        select ari.id,ari.role_bid,ari.`identity`,
+               ari.`type`,ari.created_time,ari.created_by,
+               ari.tenant_id,ari.enable_flag,ari.delete_flag, ari.name, ari.dept_name,ari.input_percentage, ar.code as roleCode, ar.name as roleName  from apm_role ar
+        inner join apm_role_identity ari on ar.bid = ari.role_bid and ar.delete_flag = 0 and ari.delete_flag = 0
+        where ar.sphere_bid = #{sphereBid} and ari.type = #{type}
+        <if test="name != null and name != ''">
+            and ari.name like concat('%',#{name},'%')
+        </if>
+        order by ari.created_time
+    </select>
+
+    <select id="listEmpByBizBidAndCodes" resultType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRoleIdentity">
+        SELECT
+            ari.id,
+            ari.role_bid,
+            ari.`identity`,
+            ari.`type`,
+            ari.created_time,
+            ari.created_by,
+            ari.tenant_id,
+            ari.enable_flag,
+            ari.delete_flag,
+            ari.NAME,
+            ari.dept_name,
+            ari.input_percentage,
+            ar.CODE AS roleCode,
+            ar.NAME AS roleName
+        FROM
+            apm_role ar,
+            apm_role_identity ari,
+            apm_sphere asp
+        WHERE
+            ar.bid = ari.role_bid
+          AND ar.delete_flag = 0
+          AND ari.delete_flag = 0
+          AND asp.delete_flag = 0
+          AND asp.bid = ar.sphere_bid
+          AND ari.type = 'employee'
+          AND asp.type = #{sphereType}
+          AND asp.biz_bid = #{bizBid}
+          and ar.code in
+        <foreach collection="codes" item="code" open="(" separator="," close=")">
+            #{code}
+        </foreach>
+    </select>
+
+    <select id="listAllRoleAndIdentityBySphereBid" resultType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRoleIdentity">
+        select ari.id,ar.bid as roleBid,ari.`identity`,
+               ari.`type`,ari.created_time,ari.created_by,
+               ari.tenant_id,ari.enable_flag,ari.delete_flag, ari.name, ari.dept_name,ari.input_percentage,
+               ar.code as roleCode, ar.name as roleName, ar.description, ar.type as roleType, ar.parent_bid as parentBid
+        from apm_role ar left join apm_role_identity ari on ar.bid = ari.role_bid and ari.delete_flag = 0
+        where ar.delete_flag = 0 and ar.sphere_bid = #{sphereBid}
+    </select>
+
+    <select id="listInputPercentageNotNull" resultType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRoleIdentity">
+        select ari.id,ari.role_bid,ari.`identity`,
+        ari.`type`,ari.created_time,ari.created_by,
+        ari.tenant_id,ari.enable_flag,ari.delete_flag, ari.name, ari.dept_name,ari.input_percentage, ar.code as roleCode, ar.name as roleName,ar.sphere_bid as sphereBid  from apm_role ar
+        inner join apm_role_identity ari on ar.bid = ari.role_bid and ar.delete_flag = 0 and ari.delete_flag = 0
+        where ari.type = 'employee'
+        <if test="sphereBids != null and sphereBids.size != 0">
+            and ar.sphere_bid in
+            <foreach collection="sphereBids" item="sphereBid" separator="," open="(" close=")">
+                #{sphereBid}
+            </foreach>
+        </if>
+        and ari.input_percentage is not null
+        order by ari.created_time
+    </select>
+
+    <delete id="physicsRemove">
+        delete from apm_role_identity
+        <where>
+            delete_flag = 0
+            <if test="roleIdentityDto.id != null">
+                and id = #{roleIdentityDto.id}
+            </if>
+            <if test="roleIdentityDto.foreignBid != null and roleIdentityDto.foreignBid != ''">
+                and foreign_bid = #{roleIdentityDto.foreignBid}
+            </if>
+            <if test="roleIdentityDto.roleBids != null and roleIdentityDto.roleBids.size != 0">
+                and role_bid in
+                <foreach collection="roleIdentityDto.roleBids" item="roleBid" separator="," open="(" close=")">
+                    #{roleBid}
+                </foreach>
+            </if>
+        </where>
+    </delete>
+</mapper>

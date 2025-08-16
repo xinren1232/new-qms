@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.filemanagement.mapper.CfgFileTypeMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.filemanagement.domain.CfgFileType">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="suffixName" column="suffix_name" jdbcType="VARCHAR"/>
+            <result property="matching" column="matching" jdbcType="VARCHAR"/>
+            <result property="readRule" column="read_rule" jdbcType="INTEGER"/>
+            <result property="storageRule" column="storage_rule" jdbcType="VARCHAR"/>
+            <result property="mimeType" column="mime_type" jdbcType="VARCHAR"/>
+            <result property="priority" column="priority" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="fileViewerBids" column="file_viewer_bids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="defaultFlag" column="default_flag" jdbcType="BIT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,name,
+        suffix_name,matching,read_rule,
+        storage_rule,mime_type,priority,
+        description,file_viewer_bids,default_flag,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time,delete_flag,
+        enable_flag
+    </sql>
+
+    <delete id="deleteByBid" parameterType="java.lang.String">
+        delete from cfg_file_type where bid = #{fileTypeBid}
+    </delete>
+</mapper>

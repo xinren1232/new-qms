@@ -1,0 +1,184 @@
+# QMS-AI 告警规则配置
+groups:
+  # 系统级别告警
+  - name: system_alerts
+    rules:
+      # 服务宕机告警
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "服务 {{ $labels.job }} 已宕机"
+          description: "服务 {{ $labels.job }} 在实例 {{ $labels.instance }} 上已宕机超过1分钟"
+
+      # CPU使用率过高
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(qms_ai_process_cpu_seconds_total[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "CPU使用率过高"
+          description: "实例 {{ $labels.instance }} CPU使用率超过80%，当前值: {{ $value }}%"
+
+      # 内存使用率过高
+      - alert: HighMemoryUsage
+        expr: (qms_ai_process_resident_memory_bytes / qms_ai_process_virtual_memory_max_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "内存使用率过高"
+          description: "实例 {{ $labels.instance }} 内存使用率超过85%，当前值: {{ $value }}%"
+
+  # 应用级别告警
+  - name: application_alerts
+    rules:
+      # HTTP错误率过高
+      - alert: HighHTTPErrorRate
+        expr: (rate(qms_ai_http_requests_total{status_code=~"5.."}[5m]) / rate(qms_ai_http_requests_total[5m])) * 100 > 5
+        for: 3m
+        labels:
+          severity: critical
+          category: error_rate
+        annotations:
+          summary: "HTTP错误率过高"
+          description: "服务 {{ $labels.job }} HTTP 5xx错误率超过5%，当前值: {{ $value }}%"
+
+      # 响应时间过长
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(qms_ai_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "HTTP响应时间过长"
+          description: "服务 {{ $labels.job }} 95%分位响应时间超过2秒，当前值: {{ $value }}秒"
+
+      # AI模型请求失败率过高
+      - alert: HighAIModelFailureRate
+        expr: (rate(qms_ai_model_requests_total{status="error"}[5m]) / rate(qms_ai_model_requests_total[5m])) * 100 > 10
+        for: 3m
+        labels:
+          severity: critical
+          category: ai_service
+        annotations:
+          summary: "AI模型请求失败率过高"
+          description: "模型 {{ $labels.model_provider }}/{{ $labels.model_name }} 失败率超过10%，当前值: {{ $value }}%"
+
+      # AI模型响应时间过长
+      - alert: SlowAIModelResponse
+        expr: histogram_quantile(0.95, rate(qms_ai_model_response_time_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          category: ai_service
+        annotations:
+          summary: "AI模型响应时间过长"
+          description: "模型 {{ $labels.model_provider }}/{{ $labels.model_name }} 95%分位响应时间超过30秒，当前值: {{ $value }}秒"
+
+  # 数据库告警
+  - name: database_alerts
+    rules:
+      # 数据库连接数过高
+      - alert: HighDatabaseConnections
+        expr: qms_ai_db_connections_active > 40
+        for: 3m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "数据库连接数过高"
+          description: "数据库 {{ $labels.database_type }} 活跃连接数超过40，当前值: {{ $value }}"
+
+      # 数据库不健康
+      - alert: DatabaseUnhealthy
+        expr: qms_ai_system_health{component="database"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "数据库服务不健康"
+          description: "数据库组件健康检查失败"
+
+  # 缓存告警
+  - name: cache_alerts
+    rules:
+      # 缓存命中率过低
+      - alert: LowCacheHitRate
+        expr: qms_ai_cache_hit_rate < 70
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "缓存命中率过低"
+          description: "缓存 {{ $labels.cache_type }} 命中率低于70%，当前值: {{ $value }}%"
+
+      # 缓存服务不健康
+      - alert: CacheUnhealthy
+        expr: qms_ai_system_health{component="cache"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "缓存服务不健康"
+          description: "缓存组件健康检查失败"
+
+  # 业务指标告警
+  - name: business_alerts
+    rules:
+      # 活跃用户数异常下降
+      - alert: ActiveUsersDropped
+        expr: (qms_ai_active_users - qms_ai_active_users offset 1h) / qms_ai_active_users offset 1h * 100 < -50
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "活跃用户数异常下降"
+          description: "活跃用户数相比1小时前下降超过50%，当前值: {{ $value }}"
+
+      # 用户评分过低
+      - alert: LowUserRating
+        expr: histogram_quantile(0.5, rate(qms_ai_user_ratings_bucket[1h])) < 3
+        for: 30m
+        labels:
+          severity: warning
+          category: quality
+        annotations:
+          summary: "用户评分过低"
+          description: "模型 {{ $labels.model_provider }} 中位数评分低于3分，当前值: {{ $value }}"
+
+  # 系统资源告警
+  - name: resource_alerts
+    rules:
+      # 磁盘空间不足
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          category: resource
+        annotations:
+          summary: "磁盘空间不足"
+          description: "实例 {{ $labels.instance }} 根分区可用空间低于10%，当前值: {{ $value }}%"
+
+      # 文件描述符使用率过高
+      - alert: HighFileDescriptorUsage
+        expr: (qms_ai_process_open_fds / qms_ai_process_max_fds) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "文件描述符使用率过高"
+          description: "实例 {{ $labels.instance }} 文件描述符使用率超过80%，当前值: {{ $value }}%"

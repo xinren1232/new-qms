@@ -1,0 +1,122 @@
+# Prometheus配置文件
+# QMS-AI系统监控配置
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'qms-ai'
+    environment: 'production'
+
+# 告警规则文件
+rule_files:
+  - "rules/*.yml"
+
+# 告警管理器配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# 抓取配置
+scrape_configs:
+  # Prometheus自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # QMS-AI应用端监控
+  - job_name: 'qms-api'
+    static_configs:
+      - targets: ['nodejs-api:3000']
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+
+  # QMS配置中心集群监控
+  - job_name: 'qms-config-cluster'
+    static_configs:
+      - targets: 
+        - 'config-primary:8081'
+        - 'config-secondary:8082'
+        - 'config-tertiary:8083'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+
+  # 配置中心负载均衡器
+  - job_name: 'qms-config-lb'
+    static_configs:
+      - targets: ['config-lb:80']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # PostgreSQL数据库监控
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis缓存监控
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # 系统资源监控
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Nginx监控
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # 容器监控
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # AlertManager监控
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 30s
+
+  # Grafana监控
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # AI模型服务监控（如果有独立的AI服务）
+  - job_name: 'ai-services'
+    static_configs:
+      - targets: []  # 根据实际AI服务地址配置
+    scrape_interval: 30s
+    scrape_timeout: 15s
+
+# 远程写入配置（可选，用于长期存储）
+# remote_write:
+#   - url: "http://remote-storage:9201/write"
+#     queue_config:
+#       max_samples_per_send: 1000
+#       max_shards: 200
+#       capacity: 2500
+
+# 远程读取配置（可选）
+# remote_read:
+#   - url: "http://remote-storage:9201/read"

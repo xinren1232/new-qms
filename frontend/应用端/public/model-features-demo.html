@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QMS AI模型特性演示</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        .model-selector {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .model-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .model-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .model-btn:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        .model-btn.active {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .model-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .model-id {
+            font-size: 12px;
+            color: #666;
+        }
+        .features-display {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .features-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .feature-card.active {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            transform: translateY(-2px);
+        }
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .feature-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .feature-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .feature-status.supported {
+            background: #28a745;
+            color: white;
+        }
+        .feature-status.not-supported {
+            background: #dc3545;
+            color: white;
+        }
+        .current-model-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .current-model-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .current-model-id {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 QMS AI模型特性演示</h1>
+            <p>点击不同的模型查看其特性支持情况</p>
+        </div>
+
+        <!-- 当前选中模型 -->
+        <div class="current-model-info">
+            <div class="current-model-name" id="currentModelName">请选择一个模型</div>
+            <div class="current-model-id" id="currentModelId"></div>
+        </div>
+
+        <!-- 模型选择器 -->
+        <div class="model-selector">
+            <h3>选择AI模型</h3>
+            <div class="model-buttons" id="modelButtons">
+                <!-- 模型按钮将通过JavaScript生成 -->
+            </div>
+        </div>
+
+        <!-- 特性展示 -->
+        <div class="features-display">
+            <div class="features-title">模型特性支持情况</div>
+            <div class="features-grid">
+                <div class="feature-card" id="reasoningCard">
+                    <div class="feature-icon">🧠</div>
+                    <div class="feature-name">推理能力</div>
+                    <div class="feature-status not-supported" id="reasoningStatus">不支持</div>
+                </div>
+                <div class="feature-card" id="toolCallsCard">
+                    <div class="feature-icon">🔧</div>
+                    <div class="feature-name">工具调用</div>
+                    <div class="feature-status not-supported" id="toolCallsStatus">不支持</div>
+                </div>
+                <div class="feature-card" id="visionCard">
+                    <div class="feature-icon">👁️</div>
+                    <div class="feature-name">图文识别</div>
+                    <div class="feature-status not-supported" id="visionStatus">不支持</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模型配置数据
+        const modelsConfig = {
+            'gpt-4o': {
+                name: 'GPT-4o',
+                reasoning: false,
+                toolCalls: true,
+                vision: true
+            },
+            'o3': {
+                name: 'O3',
+                reasoning: true,
+                toolCalls: true,
+                vision: true
+            },
+            'gemini-2.5-pro-thinking': {
+                name: 'Gemini 2.5 Pro Thinking',
+                reasoning: true,
+                toolCalls: true,
+                vision: true
+            },
+            'claude-3-7-sonnet': {
+                name: 'Claude 3.7 Sonnet',
+                reasoning: false,
+                toolCalls: true,
+                vision: true
+            },
+            'deepseek-v3': {
+                name: 'DeepSeek V3',
+                reasoning: false,
+                toolCalls: false,
+                vision: false
+            },
+            'deepseek-r1': {
+                name: 'DeepSeek R1',
+                reasoning: true,
+                toolCalls: true,
+                vision: false
+            }
+        };
+
+        let currentModel = null;
+
+        // 生成模型按钮
+        function generateModelButtons() {
+            const container = document.getElementById('modelButtons');
+            container.innerHTML = '';
+
+            Object.keys(modelsConfig).forEach(modelId => {
+                const model = modelsConfig[modelId];
+                const button = document.createElement('div');
+                button.className = 'model-btn';
+                button.onclick = () => selectModel(modelId);
+                button.innerHTML = `
+                    <div class="model-name">${model.name}</div>
+                    <div class="model-id">${modelId}</div>
+                `;
+                container.appendChild(button);
+            });
+        }
+
+        // 选择模型
+        function selectModel(modelId) {
+            currentModel = modelId;
+            const model = modelsConfig[modelId];
+
+            // 更新当前模型信息
+            document.getElementById('currentModelName').textContent = model.name;
+            document.getElementById('currentModelId').textContent = modelId;
+
+            // 更新按钮状态
+            document.querySelectorAll('.model-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.model-btn').classList.add('active');
+
+            // 更新特性显示
+            updateFeatures(model);
+        }
+
+        // 更新特性显示
+        function updateFeatures(model) {
+            // 推理能力
+            updateFeature('reasoning', model.reasoning);
+            // 工具调用
+            updateFeature('toolCalls', model.toolCalls);
+            // 图文识别
+            updateFeature('vision', model.vision);
+        }
+
+        // 更新单个特性
+        function updateFeature(featureName, isSupported) {
+            const card = document.getElementById(featureName + 'Card');
+            const status = document.getElementById(featureName + 'Status');
+
+            if (isSupported) {
+                card.classList.add('active');
+                status.className = 'feature-status supported';
+                status.textContent = '支持';
+            } else {
+                card.classList.remove('active');
+                status.className = 'feature-status not-supported';
+                status.textContent = '不支持';
+            }
+        }
+
+        // 页面加载时初始化
+        window.onload = function() {
+            generateModelButtons();
+            // 默认选择第一个模型
+            selectModel('gpt-4o');
+        };
+    </script>
+</body>
+</html>

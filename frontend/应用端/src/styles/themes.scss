@@ -1,0 +1,250 @@
+/**
+ * QMS AI 主题系统
+ * 支持亮色、暗色和自动主题
+ */
+
+:root {
+  // 亮色主题 (默认)
+  &,
+  &[data-theme="light"] {
+    // 主色调
+    --qms-primary: #4facfe;
+    --qms-primary-light: #6bb6ff;
+    --qms-primary-dark: #2d8bfe;
+    
+    // 背景色
+    --qms-bg-primary: #ffffff;
+    --qms-bg-secondary: #f8fafc;
+    --qms-bg-tertiary: #f1f5f9;
+    --qms-bg-overlay: rgba(255, 255, 255, 0.95);
+    
+    // 文本色
+    --qms-text-primary: #1e293b;
+    --qms-text-secondary: #64748b;
+    --qms-text-tertiary: #94a3b8;
+    --qms-text-inverse: #ffffff;
+    
+    // 边框色
+    --qms-border-light: #f1f5f9;
+    --qms-border-normal: #e2e8f0;
+    --qms-border-dark: #cbd5e1;
+    
+    // 阴影
+    --qms-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --qms-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --qms-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --qms-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    
+    // 状态色
+    --qms-success: #10b981;
+    --qms-warning: #f59e0b;
+    --qms-error: #ef4444;
+    --qms-info: #3b82f6;
+    
+    // 聊天界面专用
+    --qms-chat-bg: #ffffff;
+    --qms-chat-user-bg: #4facfe;
+    --qms-chat-assistant-bg: #f1f5f9;
+    --qms-chat-input-bg: #ffffff;
+    --qms-chat-sidebar-bg: #f8fafc;
+  }
+  
+  // 暗色主题
+  &[data-theme="dark"] {
+    // 主色调
+    --qms-primary: #60a5fa;
+    --qms-primary-light: #93c5fd;
+    --qms-primary-dark: #3b82f6;
+    
+    // 背景色
+    --qms-bg-primary: #0f172a;
+    --qms-bg-secondary: #1e293b;
+    --qms-bg-tertiary: #334155;
+    --qms-bg-overlay: rgba(15, 23, 42, 0.95);
+    
+    // 文本色
+    --qms-text-primary: #f8fafc;
+    --qms-text-secondary: #cbd5e1;
+    --qms-text-tertiary: #94a3b8;
+    --qms-text-inverse: #1e293b;
+    
+    // 边框色
+    --qms-border-light: #334155;
+    --qms-border-normal: #475569;
+    --qms-border-dark: #64748b;
+    
+    // 阴影
+    --qms-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --qms-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --qms-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    --qms-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+    
+    // 状态色
+    --qms-success: #34d399;
+    --qms-warning: #fbbf24;
+    --qms-error: #f87171;
+    --qms-info: #60a5fa;
+    
+    // 聊天界面专用
+    --qms-chat-bg: #1e293b;
+    --qms-chat-user-bg: #3b82f6;
+    --qms-chat-assistant-bg: #334155;
+    --qms-chat-input-bg: #334155;
+    --qms-chat-sidebar-bg: #0f172a;
+  }
+  
+  // 自动主题 (跟随系统)
+  &[data-theme="auto"] {
+    @media (prefers-color-scheme: light) {
+      // 使用亮色主题变量
+      --qms-primary: #4facfe;
+      --qms-primary-light: #6bb6ff;
+      --qms-primary-dark: #2d8bfe;
+      --qms-bg-primary: #ffffff;
+      --qms-bg-secondary: #f8fafc;
+      --qms-bg-tertiary: #f1f5f9;
+      --qms-bg-overlay: rgba(255, 255, 255, 0.95);
+      --qms-text-primary: #1e293b;
+      --qms-text-secondary: #64748b;
+      --qms-text-tertiary: #94a3b8;
+      --qms-text-inverse: #ffffff;
+      --qms-border-light: #f1f5f9;
+      --qms-border-normal: #e2e8f0;
+      --qms-border-dark: #cbd5e1;
+      --qms-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --qms-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --qms-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --qms-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      --qms-success: #10b981;
+      --qms-warning: #f59e0b;
+      --qms-error: #ef4444;
+      --qms-info: #3b82f6;
+      --qms-chat-bg: #ffffff;
+      --qms-chat-user-bg: #4facfe;
+      --qms-chat-assistant-bg: #f1f5f9;
+      --qms-chat-input-bg: #ffffff;
+      --qms-chat-sidebar-bg: #f8fafc;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      // 使用暗色主题变量
+      --qms-primary: #60a5fa;
+      --qms-primary-light: #93c5fd;
+      --qms-primary-dark: #3b82f6;
+      --qms-bg-primary: #0f172a;
+      --qms-bg-secondary: #1e293b;
+      --qms-bg-tertiary: #334155;
+      --qms-bg-overlay: rgba(15, 23, 42, 0.95);
+      --qms-text-primary: #f8fafc;
+      --qms-text-secondary: #cbd5e1;
+      --qms-text-tertiary: #94a3b8;
+      --qms-text-inverse: #1e293b;
+      --qms-border-light: #334155;
+      --qms-border-normal: #475569;
+      --qms-border-dark: #64748b;
+      --qms-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --qms-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+      --qms-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+      --qms-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+      --qms-success: #34d399;
+      --qms-warning: #fbbf24;
+      --qms-error: #f87171;
+      --qms-info: #60a5fa;
+      --qms-chat-bg: #1e293b;
+      --qms-chat-user-bg: #3b82f6;
+      --qms-chat-assistant-bg: #334155;
+      --qms-chat-input-bg: #334155;
+      --qms-chat-sidebar-bg: #0f172a;
+    }
+  }
+}
+
+// 主题过渡动画
+* {
+  transition: 
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+// 通用组件样式
+.qms-card {
+  background-color: var(--qms-bg-primary);
+  border: 1px solid var(--qms-border-normal);
+  box-shadow: var(--qms-shadow-md);
+  color: var(--qms-text-primary);
+}
+
+.qms-sidebar {
+  background-color: var(--qms-chat-sidebar-bg);
+  border-right: 1px solid var(--qms-border-normal);
+}
+
+.qms-main-content {
+  background-color: var(--qms-bg-secondary);
+  color: var(--qms-text-primary);
+}
+
+.qms-input {
+  background-color: var(--qms-chat-input-bg);
+  border: 1px solid var(--qms-border-normal);
+  color: var(--qms-text-primary);
+  
+  &:focus {
+    border-color: var(--qms-primary);
+    box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.2);
+  }
+}
+
+// 聊天消息样式
+.chat-message {
+  &.user {
+    background-color: var(--qms-chat-user-bg);
+    color: var(--qms-text-inverse);
+  }
+  
+  &.assistant {
+    background-color: var(--qms-chat-assistant-bg);
+    color: var(--qms-text-primary);
+  }
+}
+
+// Element Plus 组件主题覆盖
+.el-card {
+  background-color: var(--qms-bg-primary);
+  border-color: var(--qms-border-normal);
+  color: var(--qms-text-primary);
+}
+
+.el-button {
+  &--primary {
+    background-color: var(--qms-primary);
+    border-color: var(--qms-primary);
+  }
+}
+
+.el-input__inner {
+  background-color: var(--qms-bg-primary);
+  border-color: var(--qms-border-normal);
+  color: var(--qms-text-primary);
+}
+
+// 滚动条主题
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--qms-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--qms-border-dark);
+  border-radius: 3px;
+  
+  &:hover {
+    background: var(--qms-text-tertiary);
+  }
+}

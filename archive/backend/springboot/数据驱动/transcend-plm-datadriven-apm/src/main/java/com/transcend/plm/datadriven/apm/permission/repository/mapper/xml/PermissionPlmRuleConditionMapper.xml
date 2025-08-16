@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.PermissionPlmRuleConditionMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.PermissionPlmRuleCondition">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="permissionBid" column="permission_bid" jdbcType="VARCHAR"/>
+            <result property="appBid" column="app_bid" jdbcType="VARCHAR"/>
+            <result property="attrCode" column="attr_code" jdbcType="VARCHAR"/>
+            <result property="operator" column="operator" jdbcType="VARCHAR"/>
+            <result property="attrCodeValue" column="attr_code_value" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="valueType" column="value_type" jdbcType="VARCHAR"/>
+            <result property="remoteDictType" column="remote_dict_type" jdbcType="VARCHAR"/>
+            <result property="propertyZh" column="property_zh" jdbcType="VARCHAR"/>
+            <result property="operatorZh" column="operator_zh" jdbcType="VARCHAR"/>
+            <result property="valueZh" column="value_zh" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,permission_bid,
+        app_bid,attr_code,operator,
+        attr_code_value,`type`,value_type,remote_dict_type,property_zh,operator_zh,value_zh,enable_flag,delete_flag,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time
+    </sql>
+    <delete id="deleteByPermissionBid">
+        delete from permission_plm_rule_condition where permission_bid = #{permissionBid}
+    </delete>
+    <select id="selectByPermissionBidList" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from permission_plm_rule_condition
+        where permission_bid in
+        <foreach item="item" index="index" collection="permissionBidList" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        and delete_flag = 0
+    </select>
+
+
+</mapper>

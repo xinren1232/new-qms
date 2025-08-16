@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmSpaceUserObjectMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmSpaceUserObject">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="spaceBid" column="space_bid" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="userNo" column="user_no" jdbcType="VARCHAR"/>
+            <result property="headersDynamics" column="headers_dynamics" jdbcType="OTHER"/>
+            <result property="headersFreeze" column="headers_freeze" jdbcType="OTHER"/>
+            <result property="headersScreen" column="headers_screen" jdbcType="OTHER"/>
+            <result property="headersSort" column="headers_sort" jdbcType="OTHER"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,space_bid,
+        model_code,user_no,headers_dynamics,
+        headers_freeze,headers_screen,headers_sort,
+        created_time,updated_time,created_by,
+        updated_by,tenant_id
+    </sql>
+</mapper>

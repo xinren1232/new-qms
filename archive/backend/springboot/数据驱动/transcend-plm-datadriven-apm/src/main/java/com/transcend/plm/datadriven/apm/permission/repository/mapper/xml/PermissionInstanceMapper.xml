@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.PermissionInsanceMapper">
+
+    <sql id="TableNameSql">
+
+        <choose>
+            <when test="table.useLogicTableName != null and table.useLogicTableName == 1">
+                ${table.logicTableName}
+            </when>
+            <when test="table.tableNameSuffix != null">
+                ${table.tenantCode}_model_${table.logicTableName}_${table.tableNameSuffix}
+            </when>
+            <otherwise>
+                ${table.tenantCode}_model_${table.logicTableName}
+            </otherwise>
+        </choose>
+    </sql>
+
+<update id="updatePermissionBid">
+    update <include refid="TableNameSql" /> set permission_bid = #{permissionInstanceDto.permissionBid} where ${permissionInstanceDto.whereCondition}
+</update>
+
+</mapper>

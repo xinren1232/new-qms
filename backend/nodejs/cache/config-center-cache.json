@@ -1,0 +1,153 @@
+{
+  "cache": [
+    [
+      "qms:config:ai_models",
+      {
+        "default_model": "gpt-4o",
+        "models": {
+          "gpt-4o": {
+            "name": "GPT-4o",
+            "model": "gpt-4o",
+            "apiKey": "",
+            "baseURL": "https://api.openai.com/v1",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": false,
+              "tools": true,
+              "vision": true
+            },
+            "enabled": true
+          },
+          "o3": {
+            "name": "O3",
+            "model": "o3-mini",
+            "apiKey": "",
+            "baseURL": "https://api.openai.com/v1",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": true,
+              "tools": true,
+              "vision": false
+            },
+            "enabled": true
+          },
+          "gemini-2.5-pro-thinking": {
+            "name": "Gemini 2.5 Pro Thinking",
+            "model": "gemini-2.5-pro-thinking",
+            "apiKey": "",
+            "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": true,
+              "tools": true,
+              "vision": false
+            },
+            "enabled": true
+          },
+          "claude-3.7-sonnet": {
+            "name": "Claude 3.7 Sonnet",
+            "model": "claude-3-5-sonnet-20241022",
+            "apiKey": "",
+            "baseURL": "https://api.anthropic.com",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": false,
+              "tools": true,
+              "vision": false
+            },
+            "enabled": true
+          },
+          "deepseek-r1": {
+            "name": "DeepSeek R1",
+            "model": "deepseek-reasoner",
+            "apiKey": "",
+            "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": true,
+              "tools": false,
+              "vision": false
+            },
+            "enabled": true
+          },
+          "deepseek-v3": {
+            "name": "DeepSeek V3",
+            "model": "deepseek-chat",
+            "apiKey": "",
+            "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": false,
+              "tools": false,
+              "vision": false
+            },
+            "enabled": true
+          },
+          "deepseek-chat-v3-0324": {
+            "name": "DeepSeek Chat (V3-0324) - 外网可用",
+            "model": "deepseek-chat",
+            "apiKey": "",
+            "baseURL": "https://api.deepseek.com/v1",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": false,
+              "tools": true,
+              "vision": false,
+              "external": true
+            },
+            "enabled": true
+          },
+          "deepseek-reasoner-r1-0528": {
+            "name": "DeepSeek Reasoner (R1-0528) - 外网可用",
+            "model": "deepseek-reasoner",
+            "apiKey": "",
+            "baseURL": "https://api.deepseek.com/v1",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "features": {
+              "reasoning": true,
+              "tools": true,
+              "vision": false,
+              "external": true
+            },
+            "enabled": true
+          }
+        },
+        "rate_limits": {
+          "requests_per_minute": 60,
+          "requests_per_hour": 1000
+        },
+        "timeout": 30000,
+        "retry_attempts": 3,
+        "last_updated": "2025-01-04T10:25:00Z"
+      }
+    ]
+  ],
+  "ttl": [
+    [
+      "qms:config:ai_models",
+      1755019427120
+    ]
+  ],
+  "accessCount": [
+    [
+      "qms:config:ai_models",
+      1
+    ]
+  ],
+  "accessTime": [
+    [
+      "qms:config:ai_models",
+      1755015827120
+    ]
+  ],
+  "timestamp": 1755018065794,
+  "version": "1.0"
+}

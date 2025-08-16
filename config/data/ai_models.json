@@ -1,0 +1,131 @@
+{
+  "default_model": "gpt-4o",
+  "models": {
+    "gpt-4o": {
+      "name": "GPT-4o",
+      "model": "gpt-4o",
+      "apiKey": "",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": false,
+        "tools": true,
+        "vision": true
+      },
+      "enabled": true
+    },
+    "o3": {
+      "name": "O3 (传音代理不支持)",
+      "model": "o3-mini",
+      "apiKey": "",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": true,
+        "tools": true,
+        "vision": false
+      },
+      "enabled": false,
+      "tags": ["传音代理不支持"]
+    },
+    "gemini-2.5-pro-thinking": {
+      "name": "Gemini 2.5 Pro Thinking",
+      "model": "gemini-2.5-pro-thinking",
+      "apiKey": "",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": true,
+        "tools": true,
+        "vision": false
+      },
+      "enabled": true
+    },
+    "claude-3.7-sonnet": {
+      "name": "Claude 3.7 Sonnet (传音代理不支持)",
+      "model": "claude-3-5-sonnet-20241022",
+      "apiKey": "",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": false,
+        "tools": true,
+        "vision": false
+      },
+      "enabled": false,
+      "tags": ["传音代理不支持"]
+    },
+    "deepseek-r1": {
+      "name": "DeepSeek R1 (传音代理不支持)",
+      "model": "deepseek-reasoner",
+      "apiKey": "",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": true,
+        "tools": false,
+        "vision": false
+      },
+      "enabled": false,
+      "tags": ["传音代理不支持"]
+    },
+    "deepseek-v3": {
+      "name": "DeepSeek V3 (传音代理不支持)",
+      "model": "deepseek-chat",
+      "apiKey": "",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": false,
+        "tools": false,
+        "vision": false
+      },
+      "enabled": false,
+      "tags": ["传音代理不支持"]
+    },
+    "deepseek-chat-v3-0324": {
+      "name": "DeepSeek Chat (V3-0324)",
+      "model": "deepseek-chat",
+      "apiKey": "",
+      "baseURL": "https://api.deepseek.com/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": false,
+        "tools": true,
+        "vision": false,
+        "external": true
+      },
+      "enabled": true,
+      "tags": ["外网可用"]
+    },
+    "deepseek-reasoner-r1-0528": {
+      "name": "DeepSeek Reasoner (R1-0528)",
+      "model": "deepseek-reasoner",
+      "apiKey": "",
+      "baseURL": "https://api.deepseek.com/v1",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "features": {
+        "reasoning": true,
+        "tools": true,
+        "vision": false,
+        "external": true
+      },
+      "enabled": true,
+      "tags": ["外网可用"]
+    }
+  },
+  "rate_limits": {
+    "requests_per_minute": 60,
+    "requests_per_hour": 1000
+  },
+  "timeout": 30000,
+  "retry_attempts": 3
+}

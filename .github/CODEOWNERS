@@ -1,0 +1,18 @@
+# QMS-AI 代码所有者配置
+* @xinren1232
+
+# 前端代码
+frontend/ @xinren1232
+*.vue @xinren1232
+*.js @xinren1232
+
+# 后端代码
+backend/ @xinren1232
+
+# 配置文件
+config/ @xinren1232
+.github/ @xinren1232
+
+# 文档
+docs/ @xinren1232
+*.md @xinren1232

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.notify.mapper.NotifyTimeRuleMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.notify.domain.NotifyTimeRule">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="notifyConfigBid" column="notify_config_bid" jdbcType="VARCHAR"/>
+            <result property="timeType" column="time_type" jdbcType="VARCHAR"/>
+            <result property="second" column="second" jdbcType="INTEGER"/>
+            <result property="minute" column="minute" jdbcType="INTEGER"/>
+            <result property="hour" column="hour" jdbcType="INTEGER"/>
+            <result property="day" column="day" jdbcType="INTEGER"/>
+            <result property="week" column="week" jdbcType="INTEGER"/>
+            <result property="weeks" column="weeks" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="days" column="days" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="triggerRuleInfo" column="trigger_rule_info" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,notify_config_bid,
+        time_type,second,minute,
+        hour,day,week,
+        trigger_rule_info,enable_flag,tenant_id,
+        created_by,created_time,updated_by,
+        updated_time,delete_flag,description
+    </sql>
+</mapper>

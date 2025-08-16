@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.CfgModelEventMethodMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgModelEventMethodPo">
+        <result column="event_id" property="eventBid" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="enable_flag" property="enableFlag" jdbcType="TINYINT"/>
+        <result column="model_bid" property="modelBid" jdbcType="VARCHAR"/>
+        <result column="model_code" property="modelCode" jdbcType="VARCHAR"/>
+        <result column="method_bid" property="methodBid" jdbcType="VARCHAR"/>
+        <result column="execute_type" property="executeType" jdbcType="TINYINT"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy" />
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy" />
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+    id,  event_id, description, enable_flag,  execute_type,model_bid,model_code,method_bid,created_time, updated_time, created_by, updated_by, app_id, company_id
+  </sql>
+
+</mapper>

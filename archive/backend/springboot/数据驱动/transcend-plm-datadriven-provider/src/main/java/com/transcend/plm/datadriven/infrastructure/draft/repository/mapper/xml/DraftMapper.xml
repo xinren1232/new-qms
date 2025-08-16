@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.infrastructure.draft.repository.mapper.DraftMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.infrastructure.draft.po.DraftPO">
+        <result column="id" property="id" jdbcType="BIGINT"/>
+        <result column="bid" property="bid" jdbcType="VARCHAR"/>
+        <result column="data_bid" property="dataBid" jdbcType="VARCHAR"/>
+        <result column="base_model" property="baseModel" jdbcType="VARCHAR"/>
+        <result column="content" property="content" jdbcType="VARCHAR"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy" />
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy" />
+        <result column="tenant_id" jdbcType="VARCHAR" property="tenantId" />
+        <result column="enable_flag" property="enableFlag" jdbcType="TINYINT"/>
+        <result column="delete_flag" property="deleteFlag" jdbcType="BIT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <!--@mbg.generated-->
+        id, bid,data_bid,base_model,`content`,enable_flag,delete_flag,tenant_id,created_by,created_time,updated_by,updated_time
+    </sql>
+
+    <insert id="saveDraftData" parameterType="com.transcend.plm.datadriven.infrastructure.draft.po.DraftPO">
+        insert into ${tenantCode}_draft
+        (
+        bid,data_bid,base_model,`content`,enable_flag,delete_flag,created_by,created_time,updated_by,updated_time
+        )values(
+        #{data.bid,jdbcType=VARCHAR},
+        #{data.dataBid,jdbcType=VARCHAR},
+        #{data.baseModel,jdbcType=VARCHAR},
+        #{data.content,jdbcType=VARCHAR},
+        #{data.enableFlag,jdbcType=INTEGER},
+        #{data.deleteFlag,jdbcType=INTEGER},
+        #{data.createdBy,jdbcType=VARCHAR},
+        #{data.createdTime,jdbcType=TIMESTAMP},
+        #{data.updatedBy,jdbcType=VARCHAR},
+        #{data.updatedTime,jdbcType=TIMESTAMP}
+        )
+    </insert>
+
+
+    <delete id="deleteDraftByDataBid" >
+        delete from ${tenantCode}_draft where data_bid=#{dataBid,jdbcType=VARCHAR}
+    </delete>
+
+    <delete id="deleteDraftByBid" >
+        delete from ${tenantCode}_draft where bid=#{bid,jdbcType=VARCHAR}
+    </delete>
+
+    <select id="listDraftData" resultMap="BaseResultMap" parameterType="com.transcend.plm.datadriven.infrastructure.draft.po.DraftPO">
+        select <include refid="Base_Column_List"/> from ${tenantCode}_draft
+        <where>
+            <if test="dataBid!=null and dataBid!=''">
+                and data_bid=#{dataBid,jdbcType=VARCHAR}
+            </if>
+            <if test="bid!=null and bid!=''">
+                and bid=#{bid,jdbcType=VARCHAR}
+            </if>
+        </where>
+    </select>
+
+    <select id="getByDataBid" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from ${tenantCode}_draft where data_bid=#{dataBid,jdbcType=VARCHAR} and delete_flag = 0 order by created_time desc limit 1
+    </select>
+    <select id="getByBid" resultType="com.transcend.plm.datadriven.infrastructure.draft.po.DraftPO">
+        select <include refid="Base_Column_List"/> from ${tenantCode}_draft where bid=#{bid,jdbcType=VARCHAR} and delete_flag = 0 order by created_time desc limit 1
+    </select>
+
+    <select id="getByDataBids" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from ${tenantCode}_draft where data_bid in
+        <foreach collection="dataBids" item="dataBid" open="(" close=")" separator=",">
+            #{dataBid}
+        </foreach>
+        and delete_flag = 0
+    </select>
+
+    <select id="getByBids" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from ${tenantCode}_draft where bid in
+        <foreach collection="bids" item="bid" open="(" close=")" separator=",">
+            #{bid}
+        </foreach>
+        and delete_flag = 0
+    </select>
+
+
+</mapper>

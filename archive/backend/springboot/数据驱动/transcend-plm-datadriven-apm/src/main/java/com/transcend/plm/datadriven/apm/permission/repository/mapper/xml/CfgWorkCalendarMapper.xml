@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.CfgWorkCalendarMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.CfgWorkCalendar">
+            <id property="id" column="id" jdbcType="CHAR"/>
+            <result property="zkjahr" column="zkjahr" jdbcType="INTEGER"/>
+            <result property="zmonat" column="zmonat" jdbcType="INTEGER"/>
+            <result property="zdate" column="zdate" jdbcType="INTEGER"/>
+            <result property="ztpr" column="ztpr" jdbcType="CHAR"/>
+            <result property="workTime" column="work_time" jdbcType="TIMESTAMP"/>
+            <result property="creationTime" column="creation_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,zkjahr,zmonat,
+        zdate,ztpr,work_time,creation_time
+    </sql>
+</mapper>

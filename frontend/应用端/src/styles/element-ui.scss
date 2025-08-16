@@ -1,0 +1,189 @@
+// Element Plus 样式覆盖
+
+// 表格样式
+.el-table {
+  .el-table__header-wrapper {
+    th {
+      background-color: #fafafa;
+      color: #606266;
+      font-weight: 500;
+    }
+  }
+  
+  .el-table__row {
+    &:hover {
+      background-color: #f5f7fa;
+    }
+  }
+}
+
+// 分页样式
+.el-pagination {
+  margin-top: 16px;
+  text-align: right;
+}
+
+// 卡片样式
+.el-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  
+  .el-card__header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #ebeef5;
+    background-color: #fafafa;
+  }
+  
+  .el-card__body {
+    padding: 20px;
+  }
+}
+
+// 表单样式
+.el-form {
+  .el-form-item {
+    margin-bottom: 18px;
+    
+    .el-form-item__label {
+      color: #606266;
+      font-weight: 500;
+    }
+  }
+}
+
+// 按钮样式
+.el-button {
+  border-radius: 4px;
+  
+  &.el-button--primary {
+    background-color: #409EFF;
+    border-color: #409EFF;
+    
+    &:hover {
+      background-color: #66b1ff;
+      border-color: #66b1ff;
+    }
+  }
+}
+
+// 输入框样式
+.el-input {
+  .el-input__inner {
+    border-radius: 4px;
+    
+    &:focus {
+      border-color: #409EFF;
+    }
+  }
+}
+
+// 选择器样式
+.el-select {
+  .el-input__inner {
+    border-radius: 4px;
+  }
+}
+
+// 日期选择器样式
+.el-date-editor {
+  .el-input__inner {
+    border-radius: 4px;
+  }
+}
+
+// 标签样式
+.el-tag {
+  border-radius: 4px;
+  
+  &.el-tag--success {
+    background-color: #f0f9ff;
+    border-color: #e1f3d8;
+    color: #67c23a;
+  }
+  
+  &.el-tag--warning {
+    background-color: #fdf6ec;
+    border-color: #faecd8;
+    color: #e6a23c;
+  }
+  
+  &.el-tag--danger {
+    background-color: #fef0f0;
+    border-color: #fde2e2;
+    color: #f56c6c;
+  }
+  
+  &.el-tag--info {
+    background-color: #f4f4f5;
+    border-color: #e9e9eb;
+    color: #909399;
+  }
+}
+
+// 开关样式
+.el-switch {
+  .el-switch__core {
+    border-radius: 10px;
+  }
+}
+
+// 评分样式
+.el-rate {
+  .el-rate__icon {
+    font-size: 16px;
+  }
+}
+
+// 对话框样式
+.el-dialog {
+  border-radius: 8px;
+  
+  .el-dialog__header {
+    padding: 20px 20px 10px;
+    
+    .el-dialog__title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #303133;
+    }
+  }
+  
+  .el-dialog__body {
+    padding: 20px;
+  }
+  
+  .el-dialog__footer {
+    padding: 10px 20px 20px;
+    text-align: right;
+  }
+}
+
+// 抽屉样式
+.el-drawer {
+  .el-drawer__header {
+    padding: 20px;
+    border-bottom: 1px solid #ebeef5;
+    
+    .el-drawer__title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #303133;
+    }
+  }
+  
+  .el-drawer__body {
+    padding: 20px;
+  }
+}
+
+// 消息提示样式
+.el-message {
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+// 通知样式
+.el-notification {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

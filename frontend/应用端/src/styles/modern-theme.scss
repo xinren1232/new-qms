@@ -1,0 +1,150 @@
+// 现代化主题样式
+:root {
+  // 主色调
+  --primary-color: #409EFF;
+  --success-color: #67C23A;
+  --warning-color: #E6A23C;
+  --danger-color: #F56C6C;
+  --info-color: #909399;
+
+  // 背景色
+  --bg-color: #f5f7fa;
+  --card-bg: #ffffff;
+  --hover-bg: #f8f9fa;
+
+  // 文字颜色
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --text-placeholder: #C0C4CC;
+
+  // 边框颜色
+  --border-light: #f0f0f0;
+  --border-base: #e4e7ed;
+  --border-dark: #d3d4d6;
+
+  // 阴影
+  --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --shadow-base: 0 4px 20px rgba(0, 0, 0, 0.12);
+  --shadow-dark: 0 8px 30px rgba(0, 0, 0, 0.16);
+
+  // 圆角
+  --radius-small: 4px;
+  --radius-base: 8px;
+  --radius-large: 12px;
+  --radius-round: 50%;
+
+  // 间距
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-xxl: 24px;
+}
+
+// 全局样式重置
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+// 现代化按钮样式
+.modern-btn {
+  border-radius: var(--radius-base);
+  font-weight: 500;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-base);
+  }
+}
+
+// 现代化输入框样式
+.modern-input {
+  border-radius: var(--radius-base);
+  border: 1px solid var(--border-base);
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+  }
+}
+
+// 现代化表格样式
+.modern-table {
+  .el-table {
+    border-radius: var(--radius-base);
+    overflow: hidden;
+
+    .el-table__header {
+      background-color: var(--hover-bg);
+    }
+
+    .el-table__row {
+      transition: background-color 0.3s ease;
+
+      &:hover {
+        background-color: var(--hover-bg);
+      }
+    }
+  }
+}
+
+// 动画效果
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.6s ease-out;
+}
+
+// 加载状态
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

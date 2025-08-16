@@ -1,0 +1,44 @@
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 测试文件
+tests
+coverage
+*.test.js
+*.spec.js
+
+# 开发文件
+.git
+.gitignore
+README.md
+.env.local
+.env.development
+.env.test
+
+# 日志文件
+logs
+*.log
+
+# 临时文件
+.tmp
+.temp
+*.tmp
+*.temp
+
+# IDE文件
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS文件
+.DS_Store
+Thumbs.db
+
+# Docker文件
+Dockerfile
+.dockerignore
+docker-compose*.yml

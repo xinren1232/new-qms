@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.statistics.repository.mapper.ApmSpaceEfficiencyReportMapper">
+
+
+    <select id="queryTeamThroughputChartByProjectBid" resultType="com.transcend.plm.datadriven.api.model.MObject">
+        SELECT
+            revison.bid AS revisionBid,
+            revison.`name` AS revisionName,
+            tmpd.bid AS demandBid,
+            tmpd.`name` AS demandName,
+            tmpd.schedule_start_time AS scheduleStartTime,
+            tmpd.release_date AS releaseDate
+        FROM
+            transcend_model_A1M prrelation
+                INNER JOIN transcend_model_revision revison ON prrelation.target_bid = revison.bid
+                INNER JOIN transcend_model_A2G rpdrelation ON revison.bid = rpdrelation.source_bid
+                INNER JOIN transcend_model_product_demand tmpd ON rpdrelation.target_bid = tmpd.bid
+        WHERE
+            prrelation.source_bid = #{bid} and tmpd.schedule_start_time is not null
+    </select>
+</mapper>

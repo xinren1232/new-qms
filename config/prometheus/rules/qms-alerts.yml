@@ -1,0 +1,239 @@
+# QMS-AI系统告警规则
+groups:
+  # API服务告警
+  - name: qms-api-alerts
+    rules:
+      # API响应时间过长
+      - alert: HighAPIResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 2m
+        labels:
+          severity: warning
+          service: qms-api
+        annotations:
+          summary: "API响应时间过长"
+          description: "95%的API请求响应时间超过2秒，当前值: {{ $value }}秒"
+
+      # API错误率过高
+      - alert: HighAPIErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+          service: qms-api
+        annotations:
+          summary: "API错误率过高"
+          description: "API 5xx错误率超过5%，当前值: {{ $value | humanizePercentage }}"
+
+      # API请求量异常
+      - alert: APIRequestSpike
+        expr: rate(http_requests_total[5m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: qms-api
+        annotations:
+          summary: "API请求量异常增长"
+          description: "API请求量超过正常水平，当前QPS: {{ $value }}"
+
+      # API服务不可用
+      - alert: APIServiceDown
+        expr: up{job="qms-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: qms-api
+        annotations:
+          summary: "API服务不可用"
+          description: "QMS-AI API服务已停止响应"
+
+  # 配置中心告警
+  - name: qms-config-alerts
+    rules:
+      # 配置中心节点下线
+      - alert: ConfigNodeDown
+        expr: up{job="qms-config-cluster"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          service: config-center
+        annotations:
+          summary: "配置中心节点下线"
+          description: "配置中心节点 {{ $labels.instance }} 不可用"
+
+      # 配置中心集群不健康
+      - alert: ConfigClusterUnhealthy
+        expr: count(up{job="qms-config-cluster"} == 1) < 2
+        for: 2m
+        labels:
+          severity: critical
+          service: config-center
+        annotations:
+          summary: "配置中心集群不健康"
+          description: "配置中心可用节点少于2个，当前可用: {{ $value }}个"
+
+  # 数据库告警
+  - name: database-alerts
+    rules:
+      # 数据库连接数过高
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "数据库连接数过高"
+          description: "PostgreSQL连接数使用率超过80%，当前: {{ $value | humanizePercentage }}"
+
+      # 数据库查询时间过长
+      - alert: SlowDatabaseQueries
+        expr: rate(pg_stat_database_tup_returned[5m]) / rate(pg_stat_database_tup_fetched[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "数据库查询效率低"
+          description: "数据库查询效率低于10%，可能存在慢查询"
+
+      # 数据库不可用
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "数据库服务不可用"
+          description: "PostgreSQL数据库服务已停止响应"
+
+  # Redis缓存告警
+  - name: redis-alerts
+    rules:
+      # Redis内存使用率过高
+      - alert: HighRedisMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis内存使用率过高"
+          description: "Redis内存使用率超过90%，当前: {{ $value | humanizePercentage }}"
+
+      # Redis连接数过高
+      - alert: HighRedisConnections
+        expr: redis_connected_clients > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis连接数过高"
+          description: "Redis连接数超过100，当前: {{ $value }}"
+
+      # Redis主从同步延迟
+      - alert: RedisMasterSlaveDelay
+        expr: redis_master_repl_offset - redis_slave_repl_offset > 1000
+        for: 1m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis主从同步延迟"
+          description: "Redis主从同步延迟超过1000字节，当前延迟: {{ $value }}"
+
+      # Redis服务不可用
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis服务不可用"
+          description: "Redis缓存服务已停止响应"
+
+  # 系统资源告警
+  - name: system-alerts
+    rules:
+      # CPU使用率过高
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "CPU使用率过高"
+          description: "服务器 {{ $labels.instance }} CPU使用率超过80%，当前: {{ $value }}%"
+
+      # 内存使用率过高
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "内存使用率过高"
+          description: "服务器 {{ $labels.instance }} 内存使用率超过85%，当前: {{ $value }}%"
+
+      # 磁盘空间不足
+      - alert: LowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "磁盘空间不足"
+          description: "服务器 {{ $labels.instance }} 磁盘 {{ $labels.mountpoint }} 使用率超过85%，当前: {{ $value }}%"
+
+      # 系统负载过高
+      - alert: HighSystemLoad
+        expr: node_load1 / count(node_cpu_seconds_total{mode="idle"}) by (instance) > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "系统负载过高"
+          description: "服务器 {{ $labels.instance }} 1分钟负载超过80%，当前: {{ $value }}"
+
+  # 容器告警
+  - name: container-alerts
+    rules:
+      # 容器重启频繁
+      - alert: ContainerRestartingFrequently
+        expr: rate(container_start_time_seconds[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: container
+        annotations:
+          summary: "容器重启频繁"
+          description: "容器 {{ $labels.name }} 在15分钟内重启了 {{ $value }} 次"
+
+      # 容器内存使用率过高
+      - alert: ContainerHighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 90
+        for: 2m
+        labels:
+          severity: warning
+          service: container
+        annotations:
+          summary: "容器内存使用率过高"
+          description: "容器 {{ $labels.name }} 内存使用率超过90%，当前: {{ $value }}%"
+
+      # 容器CPU使用率过高
+      - alert: ContainerHighCPUUsage
+        expr: (rate(container_cpu_usage_seconds_total[5m]) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: container
+        annotations:
+          summary: "容器CPU使用率过高"
+          description: "容器 {{ $labels.name }} CPU使用率超过80%，当前: {{ $value }}%"

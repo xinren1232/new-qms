@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectModelLifeCycleMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectLifeCyclePo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="lc_templ_bid" jdbcType="VARCHAR" property="lcTemplBid"/>
+        <result column="lc_templ_version" jdbcType="VARCHAR" property="lcTemplVersion"/>
+        <result column="init_state" jdbcType="VARCHAR" property="initState"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="lc_phase_templ_bid" jdbcType="VARCHAR" property="lcPhaseTemplBid"/>
+        <result column="lc_phase_templ_version" jdbcType="VARCHAR" property="lcPhaseTemplVersion"/>
+        <result column="phase_init_state" jdbcType="VARCHAR" property="phaseInitState"/>
+        <result column="phase_description" jdbcType="VARCHAR" property="phaseDescription"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, lc_templ_bid, lc_templ_version, init_state, description, lc_phase_templ_bid, lc_phase_templ_version,
+        phase_init_state, phase_description, model_code, created_time,
+        updated_time, created_by, updated_by, tenant_id
+    </sql>
+
+    <select id="find" resultMap="BaseResultMap">
+        select
+        o.id, o.lc_templ_bid, t1.current_version as lc_templ_version, o.init_state, o.description,
+        o.lc_phase_templ_bid, t2.current_version as lc_phase_templ_version, o.phase_init_state, o.phase_description,
+        o.model_code, o.created_time, o.updated_time, o.created_by, o.updated_by, o.tenant_id
+        from cfg_object_life_cycle o
+        left join cfg_life_cycle_template t1 on o.lc_templ_bid = t1.bid
+        left join cfg_life_cycle_template t2 on o.lc_phase_templ_bid = t2.bid
+        where o.model_code = #{modelCode,jdbcType=VARCHAR}
+    </select>
+
+    <select id="list" resultMap="BaseResultMap">
+        select
+        o.id, o.lc_templ_bid, t1.current_version as lc_templ_version, o.init_state, o.description,
+        o.lc_phase_templ_bid, t2.current_version as lc_phase_templ_version, o.phase_init_state, o.phase_description,
+        o.model_code, o.created_time, o.updated_time, o.created_by, o.updated_by, o.tenant_id
+        from cfg_object_life_cycle o
+        left join cfg_life_cycle_template t1 on o.lc_templ_bid = t1.bid
+        left join cfg_life_cycle_template t2 on o.lc_phase_templ_bid = t2.bid
+        where o.model_code in
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <delete id="delete">
+        delete from cfg_object_life_cycle
+        where model_code = #{modelCode,jdbcType=VARCHAR}
+    </delete>
+
+    <delete id="deleteByModelCodeList">
+        delete from cfg_object_life_cycle
+        where model_code in
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </delete>
+
+    <insert id="insert">
+        insert into cfg_object_life_cycle (bid,lc_templ_version,lc_templ_bid, init_state,
+        description, lc_phase_templ_bid, lc_phase_templ_version, phase_init_state, phase_description, model_code,
+        created_time, updated_time, created_by, updated_by)
+        values (#{bid,jdbcType=VARCHAR},#{lcTemplVersion,jdbcType=VARCHAR},#{lcTemplBid,jdbcType=VARCHAR},
+        #{initState,jdbcType=VARCHAR},
+        #{description,jdbcType=VARCHAR}, #{lcPhaseTemplBid,jdbcType=VARCHAR}, #{lcPhaseTemplVersion,jdbcType=VARCHAR},
+        #{phaseInitState,jdbcType=VARCHAR}, #{phaseDescription,jdbcType=VARCHAR}, #{modelCode,jdbcType=VARCHAR},
+        #{createdTime,jdbcType=TIMESTAMP}, #{updatedTime,jdbcType=TIMESTAMP}, #{createdBy,jdbcType=VARCHAR},
+        #{updatedBy,jdbcType=VARCHAR})
+    </insert>
+
+    <update id="update">
+        update cfg_object_life_cycle
+        set lc_templ_bid = #{lcTemplBid,jdbcType=VARCHAR},
+        init_state = #{initState,jdbcType=VARCHAR},
+        description = #{description,jdbcType=VARCHAR},
+        lc_phase_templ_bid = #{lcPhaseTemplBid,jdbcType=VARCHAR},
+        phase_init_state = #{phaseInitState,jdbcType=VARCHAR},
+        phase_description = #{phaseDescription,jdbcType=VARCHAR},
+        updated_time = #{updatedTime,jdbcType=TIMESTAMP},
+        updated_by = #{updatedBy,jdbcType=VARCHAR}
+        where model_code = #{modelCode,jdbcType=VARCHAR}
+    </update>
+
+    <select id="findLifecycleInModelCodeList" resultMap="BaseResultMap">
+        select
+        o.id, o.lc_templ_bid, t1.current_version as lc_templ_version, o.init_state, o.description,
+        o.lc_phase_templ_bid, t2.current_version as lc_phase_templ_version, o.phase_init_state, o.phase_description,
+        o.model_code, o.created_time, o.updated_time, o.created_by, o.updated_by, o.tenant_id
+        from cfg_object_life_cycle o
+        left join cfg_life_cycle_template t1 on o.lc_templ_bid = t1.bid
+        left join cfg_life_cycle_template t2 on o.lc_phase_templ_bid = t2.bid
+        where o.model_code IN
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+</mapper>

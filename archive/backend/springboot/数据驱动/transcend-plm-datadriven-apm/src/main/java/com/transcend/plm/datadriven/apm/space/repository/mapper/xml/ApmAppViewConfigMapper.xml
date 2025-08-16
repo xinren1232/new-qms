@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmAppViewConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmAppViewConfig">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="spaceBid" column="space_bid" jdbcType="VARCHAR"/>
+            <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+            <result property="viewName" column="view_name" jdbcType="VARCHAR"/>
+            <result property="viewDesc" column="view_desc" jdbcType="VARCHAR"/>
+            <result property="viewType" column="view_type" jdbcType="INTEGER"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="navSpaceAppBid" column="nav_space_app_bid" jdbcType="VARCHAR"/>
+            <result property="shareViewConfigBid" column="share_view_config_bid" jdbcType="VARCHAR"/>
+            <result property="navCode" column="nav_code" jdbcType="VARCHAR"/>
+            <result property="navConfigContent" column="nav_config_content" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="navAttrConfig" column="nav_attr_config" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="showType" column="show_type" jdbcType="VARCHAR"/>
+            <result property="viewCondition" column="view_condition" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="teamWorkers" column="team_workers" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="spaceRoleBids" column="space_role_bids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="departmentIds" column="department_ids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="userIds" column="user_ids" jdbcType="OTHER" typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,space_bid,
+        space_app_bid,view_name,view_desc,
+        view_type,show_type,view_condition,
+        team_workers,space_role_bids,department_ids,
+        user_ids,tenant_id,created_by,
+        created_time,updated_by,updated_time,
+        delete_flag,enable_flag
+    </sql>
+
+    <delete id="deleteByBid">
+        delete from apm_app_view_config where bid = #{bid}
+    </delete>
+
+    <delete id="deleteByIds">
+        delete from apm_app_view_config where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

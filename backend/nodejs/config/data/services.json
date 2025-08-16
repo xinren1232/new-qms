@@ -1,0 +1,18 @@
+{
+  "chat_service": {
+    "port": 3004,
+    "host": "localhost",
+    "health_check_interval": 30000,
+    "max_connections": 100
+  },
+  "config_center": {
+    "port": 3003,
+    "host": "localhost",
+    "health_check_interval": 30000
+  },
+  "advanced_features": {
+    "port": 3009,
+    "host": "localhost",
+    "health_check_interval": 30000
+  }
+}

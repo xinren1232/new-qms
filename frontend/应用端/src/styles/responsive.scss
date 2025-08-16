@@ -1,0 +1,92 @@
+// 响应式设计样式
+@use "sass:map";
+
+// 断点定义
+$breakpoints: (
+  'xs': 0,
+  'sm': 576px,
+  'md': 768px,
+  'lg': 992px,
+  'xl': 1200px,
+  'xxl': 1400px
+);
+
+// 响应式混入
+@mixin respond-to($breakpoint) {
+  @if map.has-key($breakpoints, $breakpoint) {
+    @media (min-width: map.get($breakpoints, $breakpoint)) {
+      @content;
+    }
+  }
+}
+
+// 移动端优化
+.mobile-optimized {
+  @include respond-to('xs') {
+    .el-row {
+      margin: 0 !important;
+    }
+
+    .el-col {
+      padding: 0 5px !important;
+    }
+
+    .metric-card {
+      margin-bottom: 10px;
+      padding: 15px;
+    }
+
+    .dashboard-sections {
+      .el-col {
+        margin-bottom: 20px;
+      }
+    }
+  }
+
+  @include respond-to('sm') {
+    .welcome-section {
+      flex-direction: column;
+      text-align: center;
+
+      .quick-actions {
+        margin-top: 20px;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// 现代化卡片样式
+.modern-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// 渐变背景
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #409EFF 0%, #36CFC9 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #67C23A 0%, #85CE61 100%);
+}
+
+.gradient-warning {
+  background: linear-gradient(135deg, #E6A23C 0%, #F7BA2A 100%);
+}
+
+.gradient-danger {
+  background: linear-gradient(135deg, #F56C6C 0%, #F78989 100%);
+}

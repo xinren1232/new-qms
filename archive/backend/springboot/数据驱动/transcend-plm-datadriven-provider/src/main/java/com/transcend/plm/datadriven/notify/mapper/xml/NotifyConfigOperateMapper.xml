@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.notify.mapper.NotifyConfigOperateMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.notify.domain.NotifyConfigOperate">
+        <id property="id" column="id" jdbcType="INTEGER"/>
+        <result property="bid" column="bid" jdbcType="VARCHAR"/>
+        <result property="notifyConfigBid" column="notify_config_bid" jdbcType="VARCHAR"/>
+        <result property="type" column="type" jdbcType="VARCHAR"/>
+        <result property="operate" column="operate" jdbcType="VARCHAR"/>
+        <result property="operateConfigInfo" column="operate_config_info" jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"/>
+        <result property="operateAttrs" column="operate_attr" jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="operateAttrValues" column="operate_attr_values" jdbcType="OTHER"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+        <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+        <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+        <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+        <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+        <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+        <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id
+        ,bid,notify_config_bid,
+        type,operate,operate_config_info,
+        operate_attr,
+        enable_flag,tenant_id,created_by,
+        created_time,updated_by,updated_time,
+        delete_flag
+    </sql>
+</mapper>

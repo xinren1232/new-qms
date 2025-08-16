@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.CfgObjectLifeCycleMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectLifeCycle">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="lcTemplBid" column="lc_templ_bid" jdbcType="VARCHAR"/>
+            <result property="lcTemplVersion" column="lc_templ_version" jdbcType="VARCHAR"/>
+            <result property="initState" column="init_state" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,lc_templ_bid,lc_templ_version,
+        init_state,description,model_code,
+        created_time,updated_time,created_by,
+        updated_by,tenant_id
+    </sql>
+</mapper>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectModelAttrHistoryMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectAttributePo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="model_version_code" jdbcType="VARCHAR" property="modelVersionCode"/>
+        <result column="obj_bid" jdbcType="VARCHAR" property="objBid"/>
+        <result column="obj_version" jdbcType="VARCHAR" property="objVersion"/>
+        <result column="data_type" jdbcType="VARCHAR" property="dataType"/>
+        <result column="sort" jdbcType="INTEGER" property="sort"/>
+        <result column="code" jdbcType="VARCHAR" property="code"/>
+        <result column="db_key" jdbcType="VARCHAR" property="dbKey"/>
+        <result column="is_custom" jdbcType="TINYINT" property="custom"/>
+        <result column="is_readonly" jdbcType="TINYINT" property="readonly"/>
+        <result column="is_required" jdbcType="TINYINT" property="required"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="constraint" jdbcType="OTHER" property="constraint"/>
+        <result column="default_value" jdbcType="VARCHAR" property="defaultValue"/>
+        <result column="is_visible" jdbcType="TINYINT" property="visible"/>
+        <result column="layout" jdbcType="VARCHAR" property="layout"/>
+        <result column="is_base_attr" jdbcType="BOOLEAN" property="baseAttr"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+    id, bid, model_code, model_version_code, obj_bid, obj_version, `component_type`, data_type,
+     sort, code, db_key, is_custom, is_readonly, is_required,
+    description, `name`, `constraint`, default_value, is_visible, layout, is_base_attr,
+    created_time, updated_time, created_by, updated_by, tenant_id
+    </sql>
+
+    <insert id="bulkInsert">
+        insert into cfg_object_attribute_history
+        (bid, model_code, model_version_code, obj_bid, obj_version, `component_type`, data_type,
+        sort, code, db_key, is_custom, is_readonly, is_required, description,
+        `name`, `constraint`, default_value, is_visible, layout, is_base_attr, created_time,
+        updated_time, created_by, updated_by, tenant_id)
+        values
+        <foreach collection="poList" item="item" separator=",">
+            (#{item.bid,jdbcType=VARCHAR}, #{item.modelCode,jdbcType=VARCHAR},
+            #{item.modelVersionCode,jdbcType=VARCHAR},
+            #{item.objBid,jdbcType=VARCHAR}, #{item.objVersion,jdbcType=VARCHAR}, #{item.componentType,jdbcType=VARCHAR},
+            #{item.dataType,jdbcType=VARCHAR},
+            #{item.sort,jdbcType=INTEGER}, #{item.code,jdbcType=VARCHAR}, #{item.dbKey,jdbcType=VARCHAR},
+            #{item.custom,jdbcType=TINYINT}, #{item.readonly,jdbcType=TINYINT}, #{item.required,jdbcType=TINYINT},
+            #{item.description,jdbcType=VARCHAR}, #{item.name,jdbcType=VARCHAR}, #{item.constraint,jdbcType=OTHER},
+            #{item.defaultValue,jdbcType=VARCHAR}, #{item.visible,jdbcType=TINYINT}, #{item.layout,jdbcType=VARCHAR},
+            #{item.baseAttr,jdbcType=BOOLEAN}, NOW(), NOW(),
+            #{item.createdBy,jdbcType=VARCHAR}, #{item.updatedBy,jdbcType=VARCHAR},
+            #{item.tenantId,jdbcType=INTEGER})
+        </foreach>
+    </insert>
+
+    <select id="findByModelVersionCodeList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object_attribute_history
+        WHERE model_version_code IN
+        <foreach collection="list" item="modelVersionCode" separator="," open="(" close=")">
+            #{modelVersionCode,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+</mapper>

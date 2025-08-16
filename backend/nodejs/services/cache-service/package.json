@@ -1,0 +1,31 @@
+{
+  "name": "qms-ai-cache-service",
+  "version": "1.0.0",
+  "description": "QMS AI系统缓存管理服务",
+  "main": "cache-manager.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "cache",
+    "redis",
+    "memory",
+    "qms",
+    "ai"
+  ],
+  "author": "QMS AI Team",
+  "license": "MIT",
+  "dependencies": {
+    "redis": "^4.6.7",
+    "node-cache": "^5.1.2",
+    "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "eslint": "^8.42.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.dictionary.infrastructure.repository.mapper.CfgDictionaryItemMapper">
+    <resultMap id="BaseResultMap"
+               type="com.transcend.plm.configcenter.dictionary.infrastructure.repository.po.CfgDictionaryItemPo">
+        <id column="dictionary_item_id" jdbcType="INTEGER" property="id"/>
+        <result column="dictionary_item_dictionary_bid" jdbcType="VARCHAR" property="dictionaryBid"/>
+        <result column="dictionary_item_bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="dictionary_item_parent_bid" jdbcType="VARCHAR" property="parentBid"/>
+        <result column="dictionary_item_key_code" jdbcType="VARCHAR" property="keyCode"/>
+        <result column="dictionary_item_description" jdbcType="VARCHAR" property="description"/>
+        <result column="dictionary_item_custom1" jdbcType="VARCHAR" property="custom1"/>
+        <result column="dictionary_item_custom2" jdbcType="VARCHAR" property="custom2"/>
+        <result column="dictionary_item_custom3" jdbcType="VARCHAR" property="custom3"/>
+        <result column="dictionary_item_style" jdbcType="VARCHAR" property="style"/>
+        <result column="dictionary_item_sort" jdbcType="INTEGER" property="sort"/>
+        <result column="dictionary_item_enable_flag" jdbcType="INTEGER" property="enableFlag"/>
+        <result column="dictionary_item_tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="dictionary_item_created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="dictionary_item_updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="dictionary_item_created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="dictionary_item_updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="dictionary_item_ref_multilingual_value_map" jdbcType="VARCHAR" property="multilingualValueMap"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+    cfg_dictionary_item.dictionary_bid as dictionary_item_dictionary_bid,
+    cfg_dictionary_item.bid as dictionary_item_bid, cfg_dictionary_item.parent_bid as dictionary_item_parent_bid,
+    cfg_dictionary_item.`key_code` as `dictionary_item_key_code`,
+     cfg_dictionary_item.multilingual_value_map->>'$.zh' as dictionary_item_zh_value,
+    cfg_dictionary_item.multilingual_value_map->>'$.en' as dictionary_item_en_value,
+    cfg_dictionary_item.multilingual_value_map as dictionary_item_ref_multilingual_value_map,
+    cfg_dictionary_item.`description` as `dictionary_item_description`,
+    cfg_dictionary_item.enable_flag as dictionary_item_enable_flag,
+    cfg_dictionary_item.sort as dictionary_item_sort,
+    cfg_dictionary_item.custom1 as dictionary_item_custom1,
+    cfg_dictionary_item.custom2 as dictionary_item_custom2,
+    cfg_dictionary_item.custom3 as dictionary_item_custom3,
+    cfg_dictionary_item.style as dictionary_item_style,
+    cfg_dictionary_item.tenant_id as dictionary_item_tenant_id, cfg_dictionary_item.created_time as dictionary_item_created_time,
+    cfg_dictionary_item.updated_time as dictionary_item_updated_time, cfg_dictionary_item.created_by as dictionary_item_created_by,
+    cfg_dictionary_item.updated_by as dictionary_item_updated_by
+  </sql>
+    <update id="blukUpdateByBid">
+        <foreach collection="items" open="" close="" separator=";" item="item">
+            update cfg_dictionary_item cfg_dictionary_item
+            set
+            `parent_bid` = #{item.parentBid,jdbcType=VARCHAR},
+            `key_code` = #{item.keyCode,jdbcType=VARCHAR},
+            `multilingual_value_map` =
+            #{item.multilingualValueMap,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            `description` = #{item.description,jdbcType=VARCHAR},
+            `custom1` = #{item.custom1,jdbcType=VARCHAR},
+            `custom2` = #{item.custom2,jdbcType=VARCHAR},
+            `custom3` = #{item.custom3,jdbcType=VARCHAR},
+            `style` = #{item.style,jdbcType=VARCHAR},
+            `enable_flag` = #{item.enableFlag,jdbcType=VARCHAR},
+            `sort` = #{item.sort,jdbcType=INTEGER}
+            where `bid` = #{item.bid,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+
+    <select id="listDictionaryItemByDictionaryName" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from cfg_dictionary_item cfg_dictionary_item,cfg_dictionary t2 where cfg_dictionary_item.dictionary_bid = t2.bid and t2.name = #{name}
+    </select>
+
+    <select id="listDictionaryItemByDictionaryBids" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_dictionary_item
+        where dictionary_bid IN
+        <foreach collection="dictioanryBids" item="bid" index="index" open="(" close=")" separator=",">
+            #{bid,jdbcType=VARCHAR}
+        </foreach>
+        <if test="enableFlag != null and enableFlag !=''">
+            AND enable_flag = #{enableFlag}
+        </if>
+        AND delete_flag = 0
+        order by sort
+
+    </select>
+
+    <select id="listDictionaryDetails" resultType="com.transcend.plm.configcenter.api.model.dictionary.vo.CfgDictionaryDetail">
+        SELECT
+            t2.name,
+            t2.code,
+            t2.enable_flag as enableFlag,
+            t2.updated_by as updatedBy,
+            t2.updated_time as updatedTime,
+            t1.key_code as keyCode,
+            t1.multilingual_value_map ->> '$.zh' AS zhValue,
+            t1.multilingual_value_map ->> '$.en' AS enValue
+        FROM
+            cfg_dictionary_item t1,
+            cfg_dictionary t2
+        WHERE
+            t1.dictionary_bid = t2.bid
+    </select>
+
+
+</mapper>

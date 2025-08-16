@@ -1,0 +1,160 @@
+*,
+*::after,
+*::before {
+  box-sizing: border-box;
+}
+
+/*定义滚动条高宽*/
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+/*定义滚动条轨道*/
+*::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+/*定义滚动条*/
+*::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-button{
+  display: none;
+}
+::placeholder {
+  user-select: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar{
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  // background-color: var(--info-lighter);
+  transform: translateZ(0);
+  text-rendering: optimizeLegibility;
+  // font-family: LarkHackSafariFont,LarkEmojiFont,LarkChineseQuote,-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,Segoe UI,PingFang SC,Microsoft Yahei,Hiragino Sans GB,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color emoji;
+  font-family: Symbol Font,General Sans Variable,PingFang SC,Noto Sans SC,Noto Sans JP!important;
+  text-rendering: optimizelegibility;
+  font-feature-settings: "tnum";
+  font-variant: tabular-nums;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+html,
+#app {
+  height: 100%;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+ul, li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+textarea[disabled="disabled"]{
+  resize: none;
+}
+
+img.avatar {
+  background-color: #eff2f5
+}
+
+.el-drawer .el-drawer__body {
+  overflow: scroll
+}
+
+// 文字button样式
+.t-btn{
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--primary);
+  padding: 4px;
+  margin: 0 2px;
+
+  .text{
+    font-size: 14px;
+    margin-right: 4px;
+    vertical-align: -0.2em;
+  }
+  .tr-svg-icon{
+    font-size: 16px;
+    margin-right: 4px;
+    vertical-align: -0.15em;
+  }
+
+  &:hover {
+    background-color: var(--info-lighter);
+    border-radius: 4px;
+  }
+
+  &:active {
+    background-color: var(--info-light);
+  }
+}
+
+.vxe-table--render-default .vxe-cell{
+  white-space: pre-line;
+  word-break: break-all;
+   padding-left: inherit;
+   padding-right: inherit;
+}
+
+.el-tree--highlight-current .el-tree-node.is-current>.el-tree-node__content {
+  color: var(--primary)
+}
+
+.el-form-item.is-required:not(.is-no-asterisk) .el-form-item__label-wrap>.el-form-item__label:before, .el-form-item.is-required:not(.is-no-asterisk)>.el-form-item__label:after{
+  display: none !important;
+}
+
+.tr-table:not(.normal-input) .vxe-table {
+  .el-input .el-input__inner,.el-range-editor {
+    font-size: 14px;
+    height: 36px;
+    padding: 0 10px;
+    line-height: 36px;
+    border-radius: 0;
+    background-color: #ffffff;
+    box-shadow: none;
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    border: 0;
+
+    & ~ .el-input__prefix,
+    & ~ .el-input__suffix {
+      display: none;
+    }
+  }
+  .el-range-editor--mini.el-input__inner{
+    height: 36px !important;
+  }
+}
+//.el-form-item__label,.el-card__header{
+//  font-weight: 600;
+//}
+//.el-card__header{
+//  font-size: 15px;
+//}
+

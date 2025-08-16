@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectLockMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectLockPo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="obj_bid" jdbcType="VARCHAR" property="objBid"/>
+        <result column="object_name" jdbcType="VARCHAR" property="objectName"/>
+        <result column="checkout_by" jdbcType="VARCHAR" property="checkoutBy"/>
+        <result column="checkout_name" jdbcType="VARCHAR" property="checkoutName"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, obj_bid, model_code, object_name, checkout_by, checkout_name
+    </sql>
+
+    <insert id="insert">
+        insert into  cfg_object_lock (obj_bid, model_code, object_name, checkout_by, checkout_name)
+        values (#{objBid,jdbcType=VARCHAR}, #{modelCode,jdbcType=VARCHAR}, #{objectName,jdbcType=VARCHAR},
+        #{checkoutBy,jdbcType=VARCHAR}, #{checkoutName,jdbcType=VARCHAR})
+    </insert>
+
+    <delete id="delete">
+        delete from  cfg_object_lock
+        where model_code = #{modelCode,jdbcType=VARCHAR}
+    </delete>
+
+    <delete id="deleteByModelCodes">
+        delete from  cfg_object_lock
+        where model_code in
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </delete>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from  cfg_object_lock
+    </select>
+
+    <select id="findByModelCodeAndInModelCodes" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM  cfg_object_lock
+        WHERE model_code LIKE CONCAT(#{modelCode,jdbcType=VARCHAR},'%')
+        OR model_code IN
+        <foreach collection="list" item="code" separator="," open="(" close=")">
+            #{code,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <select id="findAdapterModelCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM  cfg_object_lock
+        WHERE model_code = #{modelCode,jdbcType=VARCHAR}
+        AND checkout_by = #{jobNumber,jdbcType=VARCHAR}
+    </select>
+
+</mapper>

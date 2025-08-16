@@ -1,0 +1,38 @@
+# 配置服务 Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 安装系统依赖和pnpm
+RUN apk add --no-cache \
+    curl \
+    && rm -rf /var/cache/apk/* \
+    && npm install -g pnpm
+
+# 复制package文件
+COPY package*.json ./
+COPY pnpm-lock.yaml* ./
+
+# 安装依赖 - 使用pnpm，更快更可靠
+RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
+
+# 复制源代码
+COPY . .
+
+# 创建非root用户
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# 设置权限
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# 暴露端口
+EXPOSE 3003
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3003/health || exit 1
+
+# 启动命令
+CMD ["node", "config-center-service.js"]

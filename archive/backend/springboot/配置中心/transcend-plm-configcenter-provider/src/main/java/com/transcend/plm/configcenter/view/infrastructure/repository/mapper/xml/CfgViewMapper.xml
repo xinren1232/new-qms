@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.view.infrastructure.repository.mapper.CfgViewMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.view.infrastructure.repository.po.CfgViewPo">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="bid" column="bid" jdbcType="VARCHAR"/>
+        <result property="belongBid" column="belong_bid" jdbcType="VARCHAR"/>
+        <result property="viewScope" column="view_scope" jdbcType="VARCHAR"/>
+        <result property="viewType" column="view_type" jdbcType="VARCHAR"/>
+        <result property="priority" column="priority" jdbcType="INTEGER"/>
+        <result property="type" column="type" jdbcType="VARCHAR"/>
+        <result property="clientType" column="client_type" jdbcType="VARCHAR"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+        <result property="tag" column="tag" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+        <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+        <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+        <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+        <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+        <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+        <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+        <result column="content" jdbcType="VARCHAR" property="content"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="meta_model" jdbcType="VARCHAR" property="metaList"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,belong_bid,type,client_type, view_scope,view_type,priority,
+        `name`,description,model_code,tag,enable_flag,content,meta_model,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time
+    </sql>
+    <select id="getByBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_view
+        where bid = #{bid}
+        limit 1
+    </select>
+    <select id="getMetaModelsByBid" resultMap="BaseResultMap">
+        select bid,
+               meta_model
+        from cfg_view
+        where bid = #{bid}
+        limit 1
+    </select>
+    <select id="getByModelCode" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_view
+        where model_code = #{modelCode}
+
+        and enable_flag = 1
+        and delete_flag = 0
+        order by id desc
+        limit 1
+    </select>
+    <select id="getByModelCodeAndTag" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_view
+        where model_code = #{modelCode}
+        and tag = #{tag}
+        and enable_flag = 1
+        and delete_flag = 0
+        order by id desc
+        limit 1
+    </select>
+
+    <select id="countByBid" resultType="java.lang.Integer">
+        select count(*)
+        from cfg_view
+        where bid = #{bid}
+    </select>
+</mapper>

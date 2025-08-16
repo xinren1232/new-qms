@@ -1,0 +1,95 @@
+{
+  "name": "qms-ai-monorepo",
+  "version": "3.0.0",
+  "description": "QMS-AI智能质量管理系统 v3.0 - 配置驱动的统一工作空间",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    
+    "install:all": "pnpm install",
+    "clean": "pnpm -r exec rm -rf node_modules && rm -rf node_modules",
+    "clean:dist": "pnpm -r exec rm -rf dist",
+    
+    "dev": "pnpm run dev:backend & pnpm run dev:frontend",
+    "dev:backend": "pnpm --filter qms-ai-backend run dev:all",
+    "dev:frontend": "pnpm run dev:app & pnpm run dev:config",
+    "dev:app": "pnpm --filter qms-ai-application run dev",
+    "dev:config": "pnpm --filter qms-ai-config-center run serve",
+
+    "start": "pnpm run start:backend & pnpm run start:frontend",
+    "start:backend": "pnpm --filter qms-ai-backend run start:all",
+    "start:frontend": "pnpm run start:app & pnpm run start:config",
+    "start:app": "pnpm --filter qms-ai-application run serve",
+    "start:config": "pnpm --filter qms-ai-config-center run serve",
+    
+    "build": "pnpm run build:backend && pnpm run build:frontend",
+    "build:backend": "pnpm --filter qms-ai-backend run build",
+    "build:frontend": "pnpm run build:app && pnpm run build:config",
+    "build:app": "pnpm --filter qms-ai-application run build",
+    "build:config": "pnpm --filter qms-ai-config-center run build:uat",
+
+    "test": "pnpm -r run test",
+    "test:backend": "pnpm --filter qms-ai-backend run test",
+    "test:unit": "pnpm -r run test:unit",
+    "test:e2e": "pnpm -r run test:e2e",
+    
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r run lint --fix",
+    
+    "serve:app": "pnpm --filter qms-ai-application run serve",
+    "serve:config": "pnpm --filter qms-ai-config-center run serve",
+    "serve:backend": "pnpm --filter qms-ai-backend run start",
+
+    "chat-service": "pnpm --filter qms-ai-backend run start",
+    "config-service": "pnpm --filter qms-ai-backend run start:config",
+    "auth-service": "pnpm --filter qms-ai-backend run start:auth",
+    
+    "redis:start": "wsl -e bash -c \"redis-server /mnt/d/QMS01/config/redis/redis-persistent.conf\"",
+    "redis:stop": "wsl -e bash -c \"pkill -f 'redis-server.*6380'\"",
+    "redis:status": "wsl -e bash -c \"ps aux | grep redis\"",
+    
+    "health": "pnpm run health:backend && pnpm run health:frontend",
+    "health:backend": "curl -s http://localhost:3003/health && curl -s http://localhost:3004/health && curl -s http://localhost:8084/health && curl -s http://localhost:8085/health",
+    "health:frontend": "curl -s http://localhost:8081 && curl -s http://localhost:8072",
+    
+    "logs": "pnpm run logs:backend",
+    "logs:backend": "tail -f backend/nodejs/logs/*.log",
+    
+    "update": "pnpm update -r",
+    "outdated": "pnpm outdated -r",
+    
+    "workspace:info": "pnpm list -r --depth=0",
+    "workspace:graph": "pnpm list -r --depth=1 --json"
+  },
+  "workspaces": [
+    "backend/nodejs",
+    "frontend/应用端",
+    "frontend/配置端"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "rimraf": "^6.0.1",
+    "wait-on": "^8.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "keywords": [
+    "qms",
+    "ai",
+    "quality-management",
+    "monorepo",
+    "pnpm-workspace"
+  ],
+  "author": "QMS-AI Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/qms-ai.git"
+  }
+}

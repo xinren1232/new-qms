@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectRelationModelMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.ObjectRelationPO">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="tab_name" jdbcType="VARCHAR" property="tabName"/>
+        <result column="enable_flag" jdbcType="VARCHAR" property="enableFlag"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="source_model_code" jdbcType="VARCHAR" property="sourceModelCode"/>
+        <result column="target_model_code" jdbcType="VARCHAR" property="targetModelCode"/>
+        <result column="behavior" jdbcType="VARCHAR" property="behavior"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="is_required" jdbcType="TINYINT" property="required"/>
+        <result column="hide_tab" jdbcType="TINYINT" property="hideTab"/>
+        <result column="max_number" jdbcType="INTEGER" property="maxNumber"/>
+        <result column="min_number" jdbcType="INTEGER" property="minNumber"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+        <result column="sort" jdbcType="INTEGER" property="sort"/>
+        <result column="float_behavior" jdbcType="TINYINT" property="floatBehavior"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        bid,model_code
+        , `name`, tab_name,`description`, enable_flag, source_model_code,target_model_code,behavior,
+        `type`,
+        is_required,
+    max_number,min_number,hide_tab,created_time, updated_time, created_by, updated_by, sort,float_behavior
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO cfg_object_relation (<include refid="Base_Column_List"/>)
+        values
+        <foreach collection="relationList" separator="," item="relation">
+            (
+            #{relation.bid,jdbcType=VARCHAR},
+            #{relation.modelCode,jdbcType=VARCHAR},
+            #{relation.name,jdbcType=VARCHAR},
+            #{relation.tabName,jdbcType=VARCHAR},
+            #{relation.description,jdbcType=VARCHAR},
+            <choose>
+                <when test="relation.enableFlag==null or relation.enableFlag==''">
+                    "off",
+                </when>
+                <otherwise>
+                    #{relation.enableFlag,jdbcType=VARCHAR},
+                </otherwise>
+            </choose>
+            #{relation.sourceModelCode,jdbcType=VARCHAR},
+            #{relation.targetModelCode,jdbcType=VARCHAR},
+            #{relation.behavior,jdbcType=VARCHAR},
+            #{relation.type,jdbcType=VARCHAR},
+            <choose>
+                <when test="relation.required==null">
+                    0,
+                </when>
+                <otherwise>
+                    #{relation.required,jdbcType=TINYINT},
+                </otherwise>
+            </choose>
+            #{relation.maxNumber,jdbcType=INTEGER},
+            #{relation.minNumber,jdbcType=INTEGER},
+            <choose>
+                <when test="relation.hideTab!=null">
+                    #{relation.hideTab,jdbcType=TINYINT},
+                </when>
+                <otherwise>
+                    0,
+                </otherwise>
+            </choose>
+            SYSDATE(),
+            SYSDATE(),
+            #{relation.createdBy,jdbcType=VARCHAR},
+            #{relation.updatedBy,jdbcType=VARCHAR},
+            null,
+            <choose>
+                <when test="relation.floatBehavior!=null">
+                    #{relation.floatBehavior,jdbcType=TINYINT},
+                </when>
+                <otherwise>
+                    0
+                </otherwise>
+            </choose>
+            )
+        </foreach>
+    </insert>
+
+    <update id="edit">
+        <foreach collection="relationList" separator=";" item="item">
+            UPDATE cfg_object_relation
+            SET
+            <if test="item.name!=null">
+                `name` = #{item.name,jdbcType=VARCHAR},
+            </if>
+            <if test="item.tabName!=null">
+                tab_name = #{item.tabName,jdbcType=VARCHAR},
+            </if>
+            <if test="item.enableFlag!=null">
+                enable_flag = #{item.enableFlag,jdbcType=VARCHAR},
+            </if>
+            <if test="item.description!=null">
+                description=#{item.description,jdbcType=VARCHAR},
+            </if>
+            <if test="item.sourceObjBid!=null">
+                source_obj_bid=#{item.sourceObjBid,jdbcType=VARCHAR},
+            </if>
+            <if test="item.relationFlagBid!=null">
+                relation_obj_bid=#{item.relationFlagBid,jdbcType=VARCHAR},
+            </if>
+            <if test="item.behavior!=null">
+                behavior=#{item.behavior,jdbcType=VARCHAR},
+            </if>
+            <if test="item.type!=null">
+                type=#{item.type,jdbcType=VARCHAR},
+            </if>
+            <if test="item.required!=null">
+                is_required=#{item.required,jdbcType=TINYINT},
+            </if>
+            <if test="item.maxNumber!=null">
+                max_number=#{item.maxNumber,jdbcType=INTEGER},
+            </if>
+            <if test="item.minNumber!=null">
+                min_number=#{item.minNumber,jdbcType=INTEGER},
+            </if>
+            <if test="item.hideTab!=null">
+                hide_tab=#{item.hideTab,jdbcType=TINYINT},
+            </if>
+            <if test="item.floatBehavior!=null">
+                float_behavior=#{item.floatBehavior,jdbcType=TINYINT},
+            </if>
+            updated_time=SYSDATE(),
+            updated_by=#{item.updatedBy,jdbcType=VARCHAR}
+            WHERE bid=#{item.bid} and delete_flag=0
+        </foreach>
+    </update>
+
+    <select id="find" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object_relation
+        WHERE
+        delete_flag=0
+        <choose>
+            <when test="qo.bids!=null and qo.bids.size>0">
+                AND bid in (
+                <foreach collection="qo.bids" item="bid" separator=",">
+                    #{bid}
+                </foreach>
+                )
+            </when>
+            <otherwise>
+                <if test="qo.name!=null and qo.name!=''">
+                    AND `name` LIKE concat(concat('%',#{qo.name,jdbcType=VARCHAR}),'%')
+                </if>
+                <if test="qo.tabName!=null and qo.tabName!=''">
+                    AND tab_name LIKE concat(concat('%',#{qo.tabName,jdbcType=VARCHAR}),'%')
+                </if>
+                <if test="qo.enableFlag!=null and qo.enableFlag!=''">
+                    AND enable_flag = #{qo.enableFlag,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.description!=null">
+                    AND description=#{qo.description,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.sourceObjBid!=null and qo.sourceObjBid!=''">
+                    AND source_obj_bid=#{qo.sourceObjBid,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.relationFlagBid!=null and qo.relationFlagBid!=''">
+                    AND relation_obj_bid=#{qo.relationFlagBid,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.behavior!=null and qo.behavior!=''">
+                    AND behavior=#{qo.behavior,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.type!=null and qo.type!=''">
+                    AND type=#{qo.type,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.required!=null">
+                    AND is_required=#{qo.required,jdbcType=TINYINT}
+                </if>
+            </otherwise>
+        </choose>
+        ORDER BY sort,updated_time desc
+    </select>
+
+    <select id="findBySourceModelCodes" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object_relation
+        WHERE
+        delete_flag=0
+        <choose>
+            <when test="sourceModelCodes!=null and sourceModelCodes.size>0">
+                AND source_model_code in (
+                <foreach collection="sourceModelCodes" item="sourceModelCode" separator=",">
+                    #{sourceModelCode}
+                </foreach>
+                )
+            </when>
+        </choose>
+        ORDER BY sort,updated_time desc
+    </select>
+
+    <select id="query" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_object_relation
+        WHERE
+        delete_flag=0
+        <choose>
+            <when test="qo.bids!=null and qo.bids.size>0">
+                AND bid in (
+                <foreach collection="qo.bids" item="bid" separator=",">
+                    #{bid}
+                </foreach>
+                )
+            </when>
+            <otherwise>
+                <if test="qo.name!=null and qo.name!=''">
+                    AND `name` LIKE concat(concat('%',#{qo.name,jdbcType=VARCHAR}),'%')
+                </if>
+                <if test="qo.tabName!=null and qo.tabName!=''">
+                    AND tab_name LIKE concat(concat('%',#{qo.tabName,jdbcType=VARCHAR}),'%')
+                </if>
+                <if test="qo.enableFlag!=null and qo.enableFlag!=''">
+                    AND enable_flag = #{qo.enableFlag,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.description!=null">
+                    AND description=#{qo.description,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.sourceObjBid!=null and qo.sourceObjBid!=''">
+                    AND source_obj_bid=#{qo.sourceObjBid,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.relationFlagBid!=null and qo.relationFlagBid!=''">
+                    AND relation_obj_bid=#{qo.relationFlagBid,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.behavior!=null and qo.behavior!=''">
+                    AND behavior=#{qo.behavior,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.type!=null and qo.type!=''">
+                    AND type=#{qo.type,jdbcType=VARCHAR}
+                </if>
+                <if test="qo.required!=null">
+                    AND is_required=#{qo.required,jdbcType=TINYINT}
+                </if>
+                <if test="qo.sourceModel!=null and qo.sourceModel!=''">
+                    AND source_obj_bid=#{qo.sourceModel,jdbcType=VARCHAR}
+                </if>
+            </otherwise>
+        </choose>
+        ORDER BY updated_time DESC
+    </select>
+
+    <select id="findByrelationFlagect" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM object_relation
+        WHERE
+        <foreach collection="relationList" item="item" separator=")or(" close=")" open="(">
+            <if test="item.sourceObjBid==null or item.sourceObjBid==''">
+                relation_obj_bid=#{item.relationFlagBid}
+                AND source_obj_bid is null AND delete_flag=0
+            </if>
+            <if test="item.relationFlagBid==null or item.relationFlagBid==''">
+                source_obj_bid=#{item.sourceObjBid}
+                AND relation_obj_bid is null AND delete_flag=0
+            </if>
+            <if test="item.sourceObjBid!=null and item.sourceObjBid!='' and item.relationFlagBid!=null and item.relationFlagBid!=''">
+                source_obj_bid=#{item.sourceObjBid}
+                AND relation_obj_bid=#{item.relationFlagBid} AND delete_flag=0
+            </if>
+        </foreach>
+    </select>
+
+    <update id="delete">
+        <foreach collection="relationList" separator=";" item="item">
+            UPDATE object_relation
+            SET
+            delete_flag=1,
+            updated_time=SYSDATE(),
+            updated_by=#{item.updatedBy,jdbcType=VARCHAR}
+            WHERE bid=#{item.bid}
+        </foreach>
+    </update>
+
+
+</mapper>

@@ -1,0 +1,31 @@
+package com.transcend.plm.configcenter.common.interceptor;
+
+import com.transcend.framework.core.exception.TranscendBizException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.UUID;
+
+/**
+ * @author peng.qin
+ * @version 1.0.0
+ * @Description AppKey拦截器
+ * @createTime 2023-11-08 10:14:00
+ */
+@Configuration
+public class AppKeyInterceptor implements HandlerInterceptor {
+
+    @Value("${app.secret:4c2a11ee324644c6a5f279ea12d09d25ba19ed11b31b4ef19c50486f9fdb3245}")
+    private String appSecret;
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String appSecret = request.getHeader("appSecret");
+        if (!this.appSecret.equals(appSecret)) {
+            throw new TranscendBizException("appSecret is invalid");
+        }
+        return HandlerInterceptor.super.preHandle(request, response, handler);
+    }
+}

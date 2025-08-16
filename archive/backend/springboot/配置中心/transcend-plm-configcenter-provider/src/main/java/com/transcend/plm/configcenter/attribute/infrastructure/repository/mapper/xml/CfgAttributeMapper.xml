@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.attribute.infrastructure.repository.mapper.CfgAttributeMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.attribute.infrastructure.repository.po.CfgAttributePo">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="groupName" column="group_name" jdbcType="VARCHAR"/>
+            <result property="dataType" column="data_type" jdbcType="VARCHAR"/>
+            <result property="dbKey" column="db_key" jdbcType="VARCHAR"/>
+            <result property="length" column="length" jdbcType="INTEGER"/>
+            <result property="nullAble" column="null_able" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="defaultValue" column="default_value" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result column="lang_dict" jdbcType="VARCHAR" property="langDict"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,code,
+        name,model_code,description,enable_flag,null_able,`length`,
+        group_name,data_type,db_key,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time
+    </sql>
+</mapper>

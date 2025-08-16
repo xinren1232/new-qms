@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.ApmAccessMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmAccess">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="resource" column="resource" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+            <result property="visibleConfig" column="visible_config" jdbcType="VARCHAR" typeHandler="com.transcend.plm.datadriven.apm.tools.FieldConditionListTypeHandler"/>
+            <result property="operationConfig" column="operation_config" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="showLocation" column="show_location" jdbcType="VARCHAR"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="icon" column="icon" jdbcType="TIMESTAMP"/>
+            <result property="viewConfig" column="view_config" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+            <result property="methodConfig" column="method_config" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <resultMap id="ActionConfigMap" type="com.transcend.plm.datadriven.apm.permission.pojo.vo.ApmActionConfigVo">
+            <result property="bid" column="access_bid" jdbcType="VARCHAR"/>
+            <result property="action" column="code" jdbcType="VARCHAR"/>
+            <result property="actionName" column="access_name" jdbcType="VARCHAR"/>
+            <result property="resource" column="resource" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="visibleConfig" column="visible_config" jdbcType="VARCHAR" typeHandler="com.transcend.plm.datadriven.apm.tools.FieldConditionListTypeHandler"/>
+            <result property="operationConfig" column="operation_config" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+            <result property="viewConfig" column="view_config" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+            <result property="methodConfig" column="method_config" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="createdBy" column="access_created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="access_created_time" jdbcType="TIMESTAMP"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="showLocation" column="show_location" jdbcType="VARCHAR"/>
+            <result property="icon" column="icon" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+        <collection property="roles" ofType="com.transcend.plm.datadriven.apm.permission.pojo.vo.ApmRoleVO">
+                <id property="id" column="id" jdbcType="INTEGER"/>
+                <result property="bid" column="bid" jdbcType="VARCHAR"/>
+                <result property="pbid" column="pbid" jdbcType="VARCHAR"/>
+                <result property="code" column="code" jdbcType="VARCHAR"/>
+                <result property="name" column="role_name" jdbcType="VARCHAR"/>
+                <result property="sphereBid" column="sphere_bid" jdbcType="VARCHAR"/>
+                <result property="description" column="description" jdbcType="VARCHAR"/>
+                <result property="createdTime" column="role_created_time" jdbcType="TIMESTAMP"/>
+                <result property="createdBy" column="role_created_by" jdbcType="VARCHAR"/>
+                <result property="updatedTime" column="role_updated_time" jdbcType="TIMESTAMP"/>
+                <result property="updatedBy" column="role_updated_by" jdbcType="VARCHAR"/>
+            </collection>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,code,
+        name,resource,type,
+        created_by,created_time,tenant_id,
+        enable_flag,delete_flag
+    </sql>
+    <select id="listByRoles" resultMap="BaseResultMap">
+        select aa.id as id,
+        bid, code,
+        name,resource,type,
+        aa.created_by as created_by,
+        aa.created_time as created_time,
+        aa.tenant_id as tenant_id,
+        aa.enable_flag as enable_flag,
+        aa.delete_flag as delete_flag,
+        aa.visible_config as visible_config,
+        aa.description as description,
+        aa.operation_config as operation_config,
+        aa.view_config,
+        aa.method_config,
+        aa.sort as sort,
+        aa.icon as icon,
+        aa.show_location
+        from apm_access aa inner join apm_role_access ara on aa.bid = ara.access_bid
+        where 1 = 1 and aa.delete_flag = 0 and ara.delete_flag = 0 and aa.enable_flag = 1
+        and ara.sphere_bid = #{sphereBid}
+        <foreach collection="roleBids" item="role" index="index" open="and ara.role_bid in (" close=")" separator=",">
+            #{role}
+        </foreach>
+    </select>
+
+    <select id="listByBids" resultMap="BaseResultMap">
+        select aa.id as id,
+        bid, code,
+        name,resource,type,
+        aa.created_by as created_by,
+        aa.created_time as created_time,
+        aa.tenant_id as tenant_id,
+        aa.enable_flag as enable_flag,
+        aa.delete_flag as delete_flag,
+        aa.visible_config as visible_config,
+        aa.description as description,
+        aa.operation_config as operation_config,
+        aa.view_config,
+        aa.method_config,
+        aa.sort as sort,
+        aa.icon as icon,
+        aa.show_location
+        from apm_access aa
+        where
+        <foreach collection="bids" item="bid" index="index" open="bid in (" close=")" separator=",">
+            #{bid}
+        </foreach>
+    </select>
+
+    <select id="queryAccessWithRoleBySphereBid" resultMap="ActionConfigMap">
+        select aa.bid          as access_bid,
+               aa.view_config,
+               aa.method_config,
+               aa.description,
+               aa.visible_config,
+               aa.operation_config,
+               aa.enable_flag,
+               aa.delete_flag,
+               aa.code,
+               aa.name         as access_name,
+               aa.resource,
+               aa.type,
+               aa.created_by   as access_created_by,
+               aa.created_time as access_created_time,
+               aa.sort,
+               aa.icon,
+               ar.bid,
+               ar.pbid,
+               ar.code,
+               ar.name         as role_name,
+               ar.sphere_bid,
+               ar.description,
+               ar.created_time as role_created_time,
+               ar.created_by   as role_created_by,
+               ar.updated_time as role_updated_time,
+               ar.updated_by   as role_updated_by,
+               aa.show_location
+        from apm_access aa
+                 inner join apm_role_access ara on aa.bid = ara.access_bid
+                 left join apm_role ar on ar.bid = ara.role_bid
+        where ara.sphere_bid = #{sphereBid}
+          and aa.delete_flag = 0
+          and ar.delete_flag = 0
+          and ara.delete_flag = 0
+    </select>
+</mapper>

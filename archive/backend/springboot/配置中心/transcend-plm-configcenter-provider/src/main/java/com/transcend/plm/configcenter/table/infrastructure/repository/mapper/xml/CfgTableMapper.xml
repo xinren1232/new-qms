@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.table.infrastructure.repository.mapper.CfgTableMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.table.infrastructure.repository.po.CfgTablePo">
+        <result column="cfg_table_bid" jdbcType="VARCHAR" property="bid" />
+        <result column="cfg_table_logic_table_name" jdbcType="VARCHAR" property="logicTableName" />
+        <result column="cfg_table_strategy_code" jdbcType="VARCHAR" property="strategyCode" />
+        <result column="cfg_table_use_logic_table_Name" jdbcType="TINYINT" property="useLogicTableName" />
+        <result column="cfg_table_shard_column" jdbcType="VARCHAR" property="shardColumn" />
+        <result column="cfg_table_shard_num" jdbcType="INTEGER" property="shardNum" />
+        <result column="cfg_table_rule" jdbcType="VARCHAR" property="rule" />
+        <result column="cfg_table_tenant_code" jdbcType="VARCHAR" property="tenantCode" />
+        <result column="cfg_table_tenant_id" jdbcType="INTEGER" property="tenantId" />
+        <result column="cfg_table_created_time" jdbcType="TIMESTAMP" property="createdTime" />
+        <result column="cfg_table_updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+        <result column="cfg_table_created_by" jdbcType="VARCHAR" property="createdBy" />
+        <result column="cfg_table_updated_by" jdbcType="VARCHAR" property="updatedBy" />
+    </resultMap>
+    <sql id="Base_Column_List">
+    cfg_dictionary.bid as cfg_table_bid, cfg_dictionary.logic_table_name as cfg_table_logic_table_name,
+    cfg_dictionary.`use_logic_table_Name` as cfg_table_use_logic_table_Name,
+    cfg_dictionary.shard_num as cfg_table_shard_num,
+    cfg_dictionary.shard_column as cfg_table_shard_column,
+    cfg_dictionary.rule as cfg_table_rule,
+    cfg_dictionary.tenant_code as cfg_table_tenant_code,
+    cfg_dictionary.tenant_id as cfg_table_tenant_id,
+    cfg_dictionary.created_time as cfg_table_created_time, cfg_dictionary.updated_time as cfg_table_updated_time,
+    cfg_dictionary.created_by as cfg_table_created_by, cfg_dictionary.updated_by as cfg_table_updated_by
+  </sql>
+
+    <select id="getByBid" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_table
+        WHERE bid = #{bid,jdbcType=VARCHAR}
+    </select>
+
+
+    <select id="list" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_table
+        <where>
+            <if test="name != null">
+                 `logic_table_Name` like  CONCAT('%',#{name,jdbcType=VARCHAR}, '%')
+            </if>
+        </where>
+    </select>
+    <select id="getByTableName" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from cfg_table cfg_table
+        where logic_table_name = #{tableName}
+        limit 1
+    </select>
+    <select id="listByByCodesAndEnableFlags" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM cfg_dictionary cfg_dictionary
+        WHERE logic_table_name IN
+        <foreach collection="tableNames" item="tableName" separator="," open="(" close=")">
+            #{tableName,jdbcType=VARCHAR}
+        </foreach>
+        <if test="enableFlags != null and enableFlags.size()>0">
+            AND enable_flag IN
+            <foreach collection="enableFlags" item="enableFlag" separator="," open="(" close=")">
+                #{enableFlag,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        AND delete_flag = 0
+    </select>
+
+    <update id="createTable">
+        create table ${tableCreateDto.tableName} (
+        `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+        <foreach collection="tableCreateDto.createCloumns" item="createCloumn" separator=",">
+            ${createCloumn}
+        </foreach>
+        ,
+        <if test="tableCreateDto.createIndexs != null and tableCreateDto.createIndexs.size()>0">
+            <foreach collection="tableCreateDto.createIndexs" item="createIndex" separator=",">
+                ${createIndex}
+            </foreach>
+        ,
+        </if>
+        PRIMARY KEY (`id`) USING BTREE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT=${tableCreateDto.tableDesc}
+    </update>
+
+    <update id="addTableCloumns">
+        alter table ${tableCreateDto.tableName}
+        <foreach collection="tableCreateDto.createCloumns" item="createCloumn" separator=",">
+            add COLUMN ${createCloumn}
+        </foreach>
+    </update>
+</mapper>

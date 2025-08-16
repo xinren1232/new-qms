@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.permission.repository.mapper.ApmRoleAccessMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmRoleAccess">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="roleBid" column="role_bid" jdbcType="VARCHAR"/>
+            <result property="accessBid" column="access_bid" jdbcType="VARCHAR"/>
+            <result property="sphereBid" column="sphere_bid" jdbcType="VARCHAR"/>
+            <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+            <result property="filedName" column="filed_name" jdbcType="VARCHAR"/>
+            <result property="columnName" column="column_name" jdbcType="VARCHAR"/>
+            <result property="relationship" column="relationship" jdbcType="VARCHAR"/>
+            <result property="filedValue" column="filed_value" jdbcType="VARCHAR"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <resultMap id="ObjectAccessMap" type="com.transcend.plm.datadriven.apm.space.pojo.vo.ApmSpaceAppAccessVo">
+        <result property="spaceAppBid" column="space_app_bid" jdbcType="VARCHAR"/>
+        <collection property="objectAccessList" ofType="com.transcend.plm.datadriven.apm.permission.repository.entity.ApmAccess">
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="resource" column="resource" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+        </collection>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,role_bid,access_bid,
+        sphere_bid,space_app_bid,filed_name,
+        column_name,relationship,filed_value,
+        created_by,created_time,updated_by,
+        updated_time,tenant_id,enable_flag,
+        delete_flag
+    </sql>
+    <select id="getAccessByRoleBidList"
+            resultMap="ObjectAccessMap">
+        SELECT bid, code, name, resource, type, space_app_bid from apm_role_access ara inner join apm_access aa on ara.access_bid = aa.bid
+        where aa.enable_flag = 1 and aa.delete_flag = 0 and ara.enable_flag = 1 and ara.delete_flag = 0
+        <foreach collection="roleBidList" item="roleBid" open="and ara.role_bid in (" close=")" separator=",">
+            #{roleBid}
+        </foreach>
+    </select>
+</mapper>

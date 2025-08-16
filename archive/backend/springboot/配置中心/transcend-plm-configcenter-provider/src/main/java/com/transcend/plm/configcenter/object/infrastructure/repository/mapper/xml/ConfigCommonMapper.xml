@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ConfigCommonMapper">
+
+    <select id="countByCondition" resultType="java.lang.Integer">
+        select count(1)
+         from ${tableName}
+        where ${filedName} = #{conditionValue}
+         and delete_flag = '0'
+    </select>
+    <select id="countByField" resultType="java.lang.Integer">
+        select count(1)
+         from ${param.tableName}
+        where ${param.columnName} = #{param.value}
+        <if test="param.excludeLogicDeleteItems">
+            and ${param.logicDeleteFieldName} = #{param.logicDeleteValue}
+        </if>
+         <if test="param.excludeCurrentRecord">
+             and ${param.idFieldName} &lt;&gt; #{param.id}
+         </if>
+    </select>
+</mapper>

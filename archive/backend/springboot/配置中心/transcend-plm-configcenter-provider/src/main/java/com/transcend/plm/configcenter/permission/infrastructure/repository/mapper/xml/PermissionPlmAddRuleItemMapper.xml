@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.permission.infrastructure.repository.mapper.PermissionPlmAddRuleItemMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.permission.infrastructure.repository.po.PermissionPlmAddRuleItem">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="permissionBid" column="permission_bid" jdbcType="VARCHAR"/>
+            <result property="roleCode" column="role_code" jdbcType="VARCHAR"/>
+            <result property="path" column="path" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,permission_bid,
+        role_code,path,enable_flag,
+        delete_flag,tenant_id,created_by,
+        created_time,updated_by,updated_time
+    </sql>
+    <delete id="deleteByBids">
+        delete from permission_plm_add_rule_item where bid in
+    <foreach collection="bids" item="bid" open="(" separator="," close=")">
+        #{bid}
+    </foreach>
+    </delete>
+    <delete id="deleteByPermissionBid">
+        delete from permission_plm_add_rule_item where permission_bid = #{permissionBid}
+    </delete>
+
+
+    <!--    saveList-->
+    <insert id="saveList" parameterType="list">
+        insert into permission_plm_add_rule_item
+        (
+        bid,
+        permission_bid,
+        role_code,
+        path,
+        enable_flag,
+        created_by,
+        created_time,
+        updated_by,
+        updated_time
+        )
+        values
+        <foreach collection="permissionPlmAddRuleItemNews" item="data" separator=",">
+            (
+            #{data.bid},
+            #{data.permissionBid},
+            #{data.roleCode},
+            #{data.path},
+            #{data.enableFlag},
+            #{data.createdBy},
+            NOW(),
+            #{data.updatedBy},
+            NOW()
+            )
+        </foreach>
+    </insert>
+
+</mapper>

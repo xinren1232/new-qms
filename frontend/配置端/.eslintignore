@@ -1,0 +1,11 @@
+build/*.js
+src/assets
+public
+dist
+src/modules
+src/app/monitor.es.js
+src/**/*.min.js
+src/**/*.min.css
+src/**/*.min.map
+src/**/*.map
+libs

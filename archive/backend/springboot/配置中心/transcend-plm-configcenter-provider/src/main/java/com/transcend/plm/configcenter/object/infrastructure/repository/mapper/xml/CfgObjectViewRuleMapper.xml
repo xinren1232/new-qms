@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.CfgObjectViewRuleMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectViewRulePo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="obj_bid" jdbcType="VARCHAR" property="objBid"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="view_bid" jdbcType="VARCHAR" property="viewBid"/>
+        <result column="base_model" jdbcType="VARCHAR" property="baseModel"/>
+        <result column="role_type" jdbcType="TINYINT" property="roleType"/>
+        <result column="role_codes" jdbcType="VARCHAR" property="roleCodes" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="priority" jdbcType="INTEGER" property="priority"/>
+        <result column="property_match_params" jdbcType="VARCHAR" property="propertyMatchParams"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="tags" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler" property="tags"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+    view_rule.id as id, view_rule.bid as bid, view_rule.obj_bid as obj_bid,view_rule.view_bid as view_bid,
+    view_rule.base_model as base_model, view_rule.role_type as role_type, view_rule.role_codes as role_codes,
+    view_rule.property_match_params as property_match_params, view_rule.tags as tags, view_rule.description as description,
+    view_rule.priority as priority,
+    view_rule.model_code as model_code, view_rule.tenant_id as tenant_id,
+    view_rule.created_time as created_time, view_rule.updated_time as updated_time,
+    view_rule.created_by as created_by, view_rule.updated_by as updated_by
+    </sql>
+
+    <select id="findByObjBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_view_rule view_rule
+        where view_rule.obj_bid = #{objBid,jdbcType=VARCHAR}
+    </select>
+
+    <select id="findByCondition" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_view_rule view_rule
+        where 1 =1
+        <if test="objBid != null and objBid != ''">
+            and view_rule.obj_bid = #{objBid,jdbcType=VARCHAR}
+        </if>
+        <if test="baseModel != null and baseModel != ''">
+            and view_rule.base_model = #{baseModel,jdbcType=VARCHAR}
+        </if>
+        <if test="roleType != null and roleType != ''">
+            and view_rule.role_type = #{roleType,jdbcType=TINYINT}
+        </if>
+        <if test="lcStateCode != null and lcStateCode != ''">
+            and ( view_rule.lc_state_code = #{lcStateCode,jdbcType=VARCHAR} OR
+            view_rule.lc_state_code = 'ALL')
+        </if>
+        <if test="objBids != null and objBids.size()>0">
+            and view_rule.obj_bid IN (
+            <foreach collection="objBids" item="objBid" separator=",">
+                #{objBid}
+            </foreach>
+            )
+        </if>
+         <if test="baseModels != null and baseModels.size()>0">
+            and view_rule.base_model IN (
+            <foreach collection="baseModels" item="baseModel1" separator=",">
+                #{baseModel1}
+            </foreach>
+            )
+        </if>
+        <if test="roleCodes != null and roleCodes.size()>0">
+            and view_rule.role_code IN (
+            <foreach collection="roleCodes" item="roleCode" separator=",">
+                #{roleCode}
+            </foreach>
+            )
+        </if>
+        <if test="likeOperation != null and likeOperation != ''">
+            and view_rule.tags LIKE concat(concat('%', #{likeOperation},'%'))
+        </if>
+        order by view_rule.updated_time desc
+    </select>
+
+    <select id="getByObjBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_view_rule view_rule
+        where view_rule.obj_bid = #{objBid,jdbcType=VARCHAR}
+        LIMIT 1
+    </select>
+
+    <delete id="logicalDeleteByBids">
+        delete from cfg_object_view_rule
+        where bid in (
+        <foreach collection="bids" item="bid" separator=",">
+            #{bid}
+        </foreach>
+        )
+    </delete>
+
+    <delete id="deleteAuthByList">
+        delete from cfg_object_view_rule
+        where model_code in
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+    </delete>
+
+    <insert id="bulkInsert">
+        insert into cfg_object_view_rule (
+        id, bid, obj_bid,
+        model_code,priority, description,
+        base_model, role_type,
+        role_code, property_match_params, tags,
+        model_code, created_time,
+        updated_time, created_by, updated_by,
+        tenant_id
+        )
+        values
+        <foreach collection="list" separator="," item="item">
+            (#{item.id,jdbcType=INTEGER}, #{item.bid,jdbcType=VARCHAR}, #{item.objBid,jdbcType=VARCHAR},
+            #{item.modelCode,jdbcType=VARCHAR}, #{item.priority,jdbcType=VARCHAR}, #{item.priority,jdbcType=VARCHAR},
+            #{item.baseModel,jdbcType=VARCHAR},#{item.roleType,jdbcType=TINYINT},
+            #{item.roleCode,jdbcType=VARCHAR},
+            #{item.propertyMatchParams,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            #{item.tags,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            #{item.modelCode,jdbcType=VARCHAR},
+            #{item.createdTime,jdbcType=TIMESTAMP},
+            #{item.updatedTime,jdbcType=TIMESTAMP}, #{item.createdBy,jdbcType=VARCHAR},
+            #{item.updatedBy,jdbcType=VARCHAR},
+            #{item.tenantId,jdbcType=VARCHAR})
+        </foreach>
+    </insert>
+
+    <update id="bulkUpdateByBid">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE `cfg_object_view_rule`
+            SET
+            `obj_bid` = #{item.objBid,jdbcType=VARCHAR},
+            `model_code` = #{item.modelCode,jdbcType=VARCHAR},
+            `priority` = #{item.priority,jdbcType=INTEGER},
+            `description` = #{item.description,jdbcType=VARCHAR},
+            `base_model` = #{item.baseModel,jdbcType=VARCHAR},
+            `role_type` = #{item.roleType,jdbcType=TINYINT},
+            `role_code` = #{item.roleCode,jdbcType=VARCHAR},
+            `lc_state_code` = #{item.lcStateCode,jdbcType=VARCHAR},
+            `tags` = #{item.tags,jdbcType=VARCHAR}
+            WHERE
+            `bid` = #{item.bid,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+
+    <select id="listInModelCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM
+        cfg_object_view_rule view_rule
+        WHERE
+        model_code IN
+        <foreach collection="list" item="modelCode" separator="," open="(" close=")">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+        AND delete_flag = 0
+        ORDER BY priority
+    </select>
+
+    <select id="listByCondition" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM
+        cfg_object_view_rule view_rule
+        WHERE
+        model_code in
+        <foreach close=")" collection="modelCodes" item="modelCode" open="(" separator=",">
+            #{modelCode,jdbcType=VARCHAR}
+        </foreach>
+        <if test="roleType != null">
+            AND role_type = #{roleType,jdbcType=TINYINT}
+        </if>
+        <if test="roleCodeSet != null and roleCodeSet.size()>0">
+            AND role_code IN
+            <foreach collection="roleCodeSet" item="roleCode" separator="," open="(" close=")">
+                #{roleCode}
+            </foreach>
+        </if>
+        <if test="lcCode != null and lcCode != '' ">
+            /* 因为lc_state_code 为 ''时，相当于全匹配*/
+            AND lc_state_code in (#{lcCode,jdbcType=VARCHAR}, '', 'ALL')
+        </if>
+        <if test="tag != null and tag != ''">
+            /* 因为tags 数据库存储的为 ["TABLE","XXX"]*/
+            AND tags like concat(concat('%"',#{tag}),'"%')
+        </if>
+        AND delete_flag = 0
+    </select>
+    <select id="listBidByModelCode" resultType="java.lang.String">
+        select bid from cfg_object_view_rule view_rule
+        where view_rule.model_code = #{objBid,jdbcType=VARCHAR}
+    </select>
+    <select id="getOneByCondition" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM
+        cfg_object_view_rule view_rule
+        WHERE
+        model_code = #{modelCode,jdbcType=VARCHAR}
+        <if test="lcM != null and modelCodes.size()>0">
+
+        </if>
+        AND delete_flag = 0
+        ORDER BY priority
+
+    </select>
+
+    <select id="listByModelCodeAndTag" resultType="java.lang.String">
+        select view_bid from cfg_object_view_rule where model_code = #{modelCode,jdbcType=VARCHAR}
+                                                    and JSON_CONTAINS(tags, concat('"' , #{tag}, '"'))
+                                                    AND delete_flag = 0
+        ORDER BY priority
+        limit 1
+    </select>
+    <select id="listByViewBids" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_object_view_rule view_rule
+        where view_bid in
+        <foreach collection="viewBids" item="viewBid" separator="," open="(" close=")">
+            #{viewBid,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+</mapper>

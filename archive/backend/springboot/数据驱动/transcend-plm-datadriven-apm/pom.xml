@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.transcend.plm.datadriven</groupId>
+        <artifactId>transcend-plm-datadriven</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>transcend-plm-datadriven-apm</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>transcend-plm-datadriven-apm</name>
+    <description>Plm-transcend project manage for Spring Boot</description>
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>com.transcend.plm.datadriven</groupId>
+            <artifactId>transcend-plm-datadriven-provider</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+
+        <!--    任务调度模块    -->
+        <dependency>
+            <groupId>com.transcend.plm.datadriven</groupId>
+            <artifactId>transcend-plm-datadriven-powerjob</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- 待办中心 -->
+        <dependency>
+            <groupId>com.transsion.hulk</groupId>
+            <artifactId>hulk-framework-sdk-bpm</artifactId>
+            <version>${hulk-framework.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.transsion.sdk</groupId>
+            <artifactId>transsion-java-sdk-push</artifactId>
+            <version>2.1.2.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>5.3.30</version>
+        </dependency>
+    </dependencies>
+<!--    <build>-->
+<!--        <finalName>transcend-plm-datadriven-apm</finalName>-->
+<!--        <plugins>-->
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+<!--            &lt;!&ndash; maven单测生成覆盖率报告 &ndash;&gt;-->
+<!--            <plugin>-->
+<!--                <groupId>org.jacoco</groupId>-->
+<!--                <artifactId>jacoco-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
+<!--    </build>-->
+</project>

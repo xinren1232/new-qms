@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.objectview.infrastructure.repository.mapper.CfgViewConfigAttrMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.objectview.infrastructure.repository.po.CfgViewConfigAttr">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="viewBid" column="view_bid" jdbcType="VARCHAR"/>
+            <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+            <result property="componentType" column="component_type" jdbcType="VARCHAR"/>
+            <result property="dataType" column="data_type" jdbcType="VARCHAR"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="displayName" column="display_name" jdbcType="VARCHAR"/>
+            <result property="innerName" column="inner_name" jdbcType="VARCHAR"/>
+            <result property="key" column="key" jdbcType="VARCHAR"/>
+            <result property="isCustom" column="is_custom" jdbcType="TINYINT"/>
+            <result property="isInherit" column="is_inherit" jdbcType="TINYINT"/>
+            <result property="isReadonly" column="is_readonly" jdbcType="TINYINT"/>
+            <result property="isRequired" column="is_required" jdbcType="TINYINT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="constraint" column="constraint" jdbcType="VARCHAR"/>
+            <result property="defaultValue" column="default_value" jdbcType="VARCHAR"/>
+            <result property="isVisible" column="is_visible" jdbcType="TINYINT"/>
+            <result property="layout" column="layout" jdbcType="VARCHAR"/>
+            <result property="isBaseAttr" column="is_base_attr" jdbcType="BOOLEAN"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="action" column="action" jdbcType="VARCHAR"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,view_bid,
+        model_code,component_type,data_type,
+        CfgDraftsort,display_name,
+        inner_name,key,is_custom,
+        is_inherit,is_readonly,is_required,
+        description,constraint,default_value,
+        is_visible,layout,is_base_attr,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time,delete_flag,
+        action,code
+    </sql>
+
+    <!--<insert id="bulkInsertConfigAttr">
+        insert into cfg_view_config_attr(
+        bid, view_bid, `type`,
+        data_type, CfgDraft sort,
+        display_name, inner_name, `key`,
+        is_custom, is_inherit, is_readonly,
+        is_required, description, `constraint`,
+        default_value, is_visible, layout,`action`,
+        is_base_attr, created_time, updated_time,
+        created_by, updated_by,
+        tenant_id,code) values
+        <foreach collection="viewConfigAttrList" separator="," item="item">
+            (#{item.bid,jdbcType=VARCHAR}, #{item.viewBid,jdbcType=VARCHAR}, #{item.type,jdbcType=VARCHAR},
+            #{item.dataType,jdbcType=VARCHAR},  #{item.sort,jdbcType=INTEGER},
+            #{item.displayName,jdbcType=VARCHAR}, #{item.innerName,jdbcType=VARCHAR}, #{item.key,jdbcType=VARCHAR},
+            #{item.isCustom,jdbcType=TINYINT}, #{item.isInherit,jdbcType=TINYINT}, #{item.isReadonly,jdbcType=TINYINT},
+            #{item.isRequired,jdbcType=TINYINT}, #{item.description,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}, #{item.constraint,jdbcType=VARCHAR},
+            #{item.defaultValue,jdbcType=VARCHAR}, #{item.isVisible,jdbcType=TINYINT}, #{item.layout,jdbcType=VARCHAR},
+            #{item.action,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            #{item.isBaseAttr,jdbcType=BOOLEAN}, #{item.createdTime,jdbcType=TIMESTAMP}, #{item.updatedTime,jdbcType=TIMESTAMP},
+            #{item.createdBy,jdbcType=TINYINT}, #{item.updatedBy,jdbcType=VARCHAR},
+            #{item.tenantId,jdbcType=INTEGER},
+            #{item.code,jdbcType=BIGINT}
+            )
+        </foreach>
+    </insert>-->
+</mapper>

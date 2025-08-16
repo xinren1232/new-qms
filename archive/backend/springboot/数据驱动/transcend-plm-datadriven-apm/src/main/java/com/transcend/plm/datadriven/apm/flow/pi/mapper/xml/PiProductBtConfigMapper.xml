@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.flow.pi.mapper.PiProductBtConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.flow.pi.domain.PiProductBtConfig">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="productLineCode" column="product_line_code" jdbcType="VARCHAR"/>
+            <result property="productLineName" column="product_line_name" jdbcType="VARCHAR"/>
+            <result property="productManagerNumber" column="product_manager_number" jdbcType="VARCHAR"/>
+            <result property="productManagerName" column="product_manager_name" jdbcType="VARCHAR"/>
+            <result property="btDepartmentCode" column="bt_department_code" jdbcType="VARCHAR"/>
+            <result property="btDepartmentName" column="bt_department_name" jdbcType="VARCHAR"/>
+            <result property="busInterfacePerson" column="bus_interface_person" jdbcType="VARCHAR"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="INTEGER"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="INTEGER"/>
+            <result property="tenantId" column="tenant_id" jdbcType="VARCHAR"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,product_line_code,
+        product_line_name,product_manager_number,product_manager_name,
+        bt_department_code,bt_department_name,bus_interface_person,
+        enable_flag,delete_flag,tenant_id,
+        created_by,updated_by,created_time,
+        updated_time
+    </sql>
+</mapper>

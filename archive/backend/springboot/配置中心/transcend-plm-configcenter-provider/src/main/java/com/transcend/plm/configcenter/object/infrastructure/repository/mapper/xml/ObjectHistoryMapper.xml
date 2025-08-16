@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectHistoryMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.CfgObjectPo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="version" jdbcType="INTEGER" property="version"/>
+        <result column="model_version_code" jdbcType="VARCHAR" property="modelVersionCode"/>
+        <result column="parent_model_version_code" jdbcType="VARCHAR" property="parentModelVersionCode"/>
+        <result column="parent_version" jdbcType="INTEGER" property="parentVersion"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="avatar" jdbcType="VARCHAR" property="avatar"/>
+        <result column="enable_flag" jdbcType="VARCHAR" property="enableFlag"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="base_model" jdbcType="VARCHAR" property="baseModel"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="sort" jdbcType="INTEGER" property="sort"/>
+        <result column="is_draft" jdbcType="TINYINT" property="draft"/>
+        <result column="relation_flag" jdbcType="TINYINT" property="relationFlag"/>
+        <result column="version_flag" jdbcType="TINYINT" property="versionFlag"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+    id, bid, model_code, version, model_version_code, parent_model_version_code, parent_version,
+    `name`, avatar, enable_flag, description, base_model, sort, is_draft, relation_flag,
+    version_flag, created_time, updated_time, created_by, updated_by, app_id, company_id,type
+    </sql>
+
+    <insert id="insert">
+        insert into cfg_object_history (id, bid, model_code, version,
+        model_version_code, parent_model_version_code,
+        parent_version, `name`,
+        avatar, enable_flag, description,
+        base_model, sort, is_draft,
+        relation_flag, version_flag, created_time,
+        updated_time, created_by, updated_by, tenant_id, type)
+        values (#{id,jdbcType=INTEGER}, #{bid,jdbcType=VARCHAR},#{modelCode,jdbcType=VARCHAR},
+        #{version,jdbcType=INTEGER},#{modelVersionCode,jdbcType=VARCHAR}, #{parentModelVersionCode,jdbcType=VARCHAR},
+        #{parentVersion,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR},
+        #{avatar,jdbcType=VARCHAR}, #{enableFlag,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR},
+        #{baseModel,jdbcType=VARCHAR}, #{sort,jdbcType=INTEGER}, #{draft,jdbcType=TINYINT},
+        #{relationFlag,jdbcType=TINYINT}, #{versionFlag,jdbcType=TINYINT}, NOW(),
+        NOW() , #{createdBy,jdbcType=VARCHAR}, #{updatedBy,jdbcType=VARCHAR}, #{tenantId}, #{type})
+    </insert>
+
+    <insert id="copyToHistory">
+        INSERT INTO cfg_object_history (bid, model_code, version,
+        model_version_code, parent_model_version_code,
+        parent_version, `name`,
+        avatar, enable_flag, description,
+        base_model, sort, is_draft,
+        relation_flag, version_flag, created_time,
+        updated_time, created_by, updated_by)
+        SELECT
+        bid, model_code, version,
+        model_version_code, parent_model_version_code,
+        parent_version, `name`,
+        avatar, enable_flag, description,
+        base_model, sort, is_draft,
+        relation_flag, version_flag, created_time,
+        updated_time, created_by, updated_by
+        FROM cfg_object
+        WHERE parent_model_version_code = #{parentModelVersionCodeForChildren,jdbcType=VARCHAR}
+    </insert>
+
+    <update id="batchUpdate">
+        <foreach collection="poList" item="item" separator=";">
+            update cfg_object_history
+            <set>
+                <trim suffixOverrides=",">
+                    <if test="item.version != null">
+                        version = #{item.version,jdbcType=INTEGER},
+                    </if>
+                    <if test="item.modelVersionCode != null">
+                        model_version_code = #{item.modelVersionCode,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.parentModelVersionCode != null">
+                        parent_model_version_code = #{item.parentModelVersionCode,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.parentVersion != null">
+                        parent_version = #{item.parentVersion,jdbcType=INTEGER},
+                    </if>
+                    <if test="item.name != null">
+                        `name` = #{item.name,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.avatar != null">
+                        avatar = #{item.avatar,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.enableFlag != null">
+                        enable_flag = #{item.enableFlag,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.description != null">
+                        `description` = #{item.description,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.baseModel != null">
+                        `base_model` = #{item.baseModel,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.type != null">
+                        `type` = #{item.type,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.sort != null">
+                        sort = #{item.sort,jdbcType=INTEGER},
+                    </if>
+                    <if test="item.draft != null">
+                        is_draft = #{item.draft,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.relationFlag != null">
+                        relation_flag = #{item.relationFlag,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.versionFlag != null">
+                        version_flag = #{item.versionFlag,jdbcType=BOOLEAN},
+                    </if>
+                    <if test="item.updatedBy != null">
+                        updated_by = #{item.updatedBy,jdbcType=VARCHAR},
+                    </if>
+                    <if test="item.updatedTime != null">
+                        updated_time = #{item.updatedTime,jdbcType=TIMESTAMP},
+                    </if>
+                </trim>
+            </set>
+            where model_code = #{item.modelCode,jdbcType=VARCHAR}
+            and bid = #{item.bid,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+
+    <select id="findHistory" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from cfg_object_history
+        where model_code = #{modelCode,jdbcType=VARCHAR} and version = #{version,jdbcType=DECIMAL}
+        limit 1
+    </select>
+</mapper>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.apm.space.repository.mapper.ApmSpaceMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.apm.space.repository.po.ApmSpace">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="sphereBid" column="sphere_bid" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+      <!--      <result property="iconUrl" column="icon_url" jdbcType="VARCHAR"/>-->
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="templateFlag" column="template_flag" jdbcType="BOOLEAN"/>
+            <result property="templateBid" column="template_bid" jdbcType="VARCHAR"/>
+            <result property="templateName" column="template_name" jdbcType="VARCHAR"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="INTEGER"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="INTEGER"/>
+            <result property="foreignBid" column="foreign_bid" jdbcType="VARCHAR"/>
+            <result property="originBid" column="origin_bid" jdbcType="VARCHAR"/>
+            <result property="originModelCode" column="origin_model_code" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,sphereBid,name,
+        description,icon_url,sort,
+        template_flag,template_bid, template_Name, created_time,
+        updated_time,created_by,updated_by,
+        tenant_id,foreign_bid,origin_bid,origin_model_code
+    </sql>
+    <update id="updateSphereBid">
+        update apm_space set sphere_bid = #{sphereBid} where bid = #{bid}
+    </update>
+
+    <delete id="physicsRemoveByBid">
+        delete from apm_space where bid = #{bid}
+    </delete>
+
+
+</mapper>

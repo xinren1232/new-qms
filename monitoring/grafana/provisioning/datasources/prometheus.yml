@@ -1,0 +1,26 @@
+# Grafana数据源配置
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      queryTimeout: 60s
+      timeInterval: 15s
+    secureJsonData: {}
+
+  - name: Prometheus-Alertmanager
+    type: prometheus
+    access: proxy
+    url: http://alertmanager:9093
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      queryTimeout: 30s
+    secureJsonData: {}

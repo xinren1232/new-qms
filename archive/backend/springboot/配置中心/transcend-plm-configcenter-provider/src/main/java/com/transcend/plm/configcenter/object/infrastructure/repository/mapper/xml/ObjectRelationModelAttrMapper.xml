@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectRelationModelAttrMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.api.model.object.dto.ObjectRelationAttrDTO">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="relationBid" column="relation_bid" jdbcType="VARCHAR"/>
+            <result property="innerName" column="inner_name" jdbcType="VARCHAR"/>
+            <result property="explain" column="explain" jdbcType="VARCHAR"/>
+            <result property="sourceModel" column="source_model" jdbcType="VARCHAR"/>
+            <result property="sourceModelCode" column="source_model_code" jdbcType="VARCHAR"/>
+            <result property="isDelete" column="delete_flag" jdbcType="BOOLEAN"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+            <result property="columnWidth" column="column_width" jdbcType="INTEGER"/>
+            <result property="realUseInView" column="real_use_in_view" jdbcType="BOOLEAN"/>
+            <result property="realRelativeSort" column="real_relative_sort" jdbcType="INTEGER"/>
+            <result property="useInQuery" column="use_in_query" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,relation_bid,
+        inner_name,`explain`,
+        source_model,source_model_code,
+        delete_flag,created_time,updated_time,
+        created_by,updated_by,app_id,
+        company_id,column_width,real_use_in_view,
+        real_relative_sort,use_in_query
+    </sql>
+
+    <select id="queryList" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from object_relation_attr where 1 = 1
+         <if test="ao.relationBid !=null and ao.relationBid != ''">
+             and relation_bid = #{ao.relationBid,jdbcType=VARCHAR}
+         </if>
+        <if test="ao.innerName !=null and ao.innerName != ''">
+            and  inner_name = #{ao.innerName,jdbcType=VARCHAR}
+        </if>
+        <if test="ao.sourceModel !=null and ao.sourceModel != ''">
+            and  source_model = #{ao.sourceModel,jdbcType=VARCHAR}
+        </if>
+        <if test="ao.sourceModelCode !=null and ao.sourceModelCode != ''">
+            and source_model_code = #{ao.sourceModelCode,jdbcType=VARCHAR}
+        </if>
+    </select>
+    <insert id="saveBatch">
+        insert into object_relation_attr (
+        id,bid,relation_bid
+        ,inner_name,`explain`,source_model,source_model_code,
+        delete_flag,created_time,updated_time,
+        created_by,updated_by,app_id,
+        company_id,column_width,real_use_in_view,
+        real_relative_sort,use_in_query
+
+        )
+        values
+        <foreach collection="batchList" separator="," item="item">
+            (#{item.id,jdbcType=INTEGER}, #{item.bid,jdbcType=VARCHAR}, #{item.relationBid,jdbcType=VARCHAR},
+            #{item.innerName,jdbcType=VARCHAR},#{item.explain,jdbcType=VARCHAR},
+            #{item.sourceModel,jdbcType=VARCHAR}, #{item.sourceModelCode,jdbcType=VARCHAR}, #{item.isDelete,jdbcType=TINYINT},
+            #{item.createdTime,jdbcType=TIMESTAMP},
+            #{item.updatedTime,jdbcType=TIMESTAMP}, #{item.createdBy,jdbcType=VARCHAR}, #{item.updatedBy,jdbcType=VARCHAR},
+            #{item.appId,jdbcType=VARCHAR},#{item.companyId,jdbcType=INTEGER},#{item.columnWidth,jdbcType=INTEGER},
+            #{item.realUseInView,jdbcType=TINYINT},#{item.realRelativeSort,jdbcType=INTEGER},#{item.useInQuery,jdbcType=INTEGER})
+        </foreach>
+    </insert>
+    <delete id="remove">
+        delete from object_relation_attr where relation_bid in (
+        <foreach collection="bids" separator="," item="item">
+            #{item}
+        </foreach>
+        )
+    </delete>
+</mapper>

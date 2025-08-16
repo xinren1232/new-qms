@@ -1,0 +1,103 @@
+# QMS-AI Prometheus配置文件
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'qms-ai'
+    environment: 'production'
+
+# 告警规则文件
+rule_files:
+  - "alert_rules.yml"
+
+# 告警管理器配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# 数据抓取配置
+scrape_configs:
+  # Prometheus自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # QMS聊天服务监控
+  - job_name: 'qms-chat-service'
+    static_configs:
+      - targets: ['qms-chat-service:3004']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+    honor_labels: true
+
+  # QMS配置中心监控
+  - job_name: 'qms-config-service'
+    static_configs:
+      - targets: ['qms-config-service:8081']
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+
+  # QMS高级功能服务监控
+  - job_name: 'qms-advanced-service'
+    static_configs:
+      - targets: ['qms-advanced-service:3009']
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+
+  # Node Exporter - 系统指标
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # PostgreSQL监控
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Redis监控
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Docker容器监控
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # Nginx监控 (如果使用)
+  - job_name: 'nginx-exporter'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+# 远程写入配置 (可选，用于长期存储)
+# remote_write:
+#   - url: "http://victoriametrics:8428/api/v1/write"
+#     queue_config:
+#       max_samples_per_send: 10000
+#       capacity: 20000
+#       max_shards: 30
+
+# 存储配置
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention.time: 30d
+    retention.size: 10GB
+    wal-compression: true

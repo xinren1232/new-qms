@@ -1,0 +1,149 @@
+# QMS-AI本地开发环境 Docker Compose配置
+version: '3.8'
+
+services:
+  # QMS聊天服务
+  qms-chat-service:
+    build: 
+      context: ./backend/nodejs
+      dockerfile: Dockerfile
+    container_name: qms-chat-local
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DB_TYPE=sqlite
+      - CACHE_ENABLED=false
+      - LOG_LEVEL=info
+    volumes:
+      # 挂载源代码 (开发时热重载)
+      - ./backend/nodejs:/app
+      - /app/node_modules
+      # 持久化数据库文件
+      - qms_data:/app/data
+    restart: unless-stopped
+    networks:
+      - qms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # QMS应用端
+  qms-frontend:
+    build:
+      context: ./frontend/应用端
+      dockerfile: Dockerfile
+    container_name: qms-frontend-local
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # 挂载源代码 (开发时热重载)
+      - ./frontend/应用端:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - qms-network
+    depends_on:
+      qms-chat-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # QMS配置端
+  qms-config-frontend:
+    build:
+      context: ./frontend/配置端
+      dockerfile: Dockerfile
+    container_name: qms-config-local
+    ports:
+      - "8072:8072"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # 挂载源代码 (开发时热重载)
+      - ./frontend/配置端:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - qms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8072"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 配置中心服务 (可选)
+  qms-config-service:
+    build:
+      context: ./backend/nodejs
+      dockerfile: Dockerfile
+    container_name: qms-config-service-local
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=development
+      - PORT=8081
+      - DB_TYPE=sqlite
+      - CACHE_ENABLED=false
+    volumes:
+      - ./backend/nodejs:/app
+      - /app/node_modules
+      - qms_config_data:/app/data
+    restart: unless-stopped
+    networks:
+      - qms-network
+    command: ["node", "config-center-mock.js"]
+    profiles:
+      - full  # 使用 --profile full 启动
+
+  # 高级功能服务 (可选)
+  qms-advanced-service:
+    build:
+      context: ./backend/nodejs
+      dockerfile: Dockerfile
+    container_name: qms-advanced-local
+    ports:
+      - "3009:3009"
+    environment:
+      - NODE_ENV=development
+      - PORT=3009
+      - DB_TYPE=sqlite
+      - CACHE_ENABLED=false
+    volumes:
+      - ./backend/nodejs:/app
+      - /app/node_modules
+      - qms_advanced_data:/app/data
+    restart: unless-stopped
+    networks:
+      - qms-network
+    command: ["node", "advanced-features-service.js"]
+    profiles:
+      - full  # 使用 --profile full 启动
+
+# 数据卷
+volumes:
+  qms_data:
+    driver: local
+  qms_config_data:
+    driver: local
+  qms_advanced_data:
+    driver: local
+
+# 网络
+networks:
+  qms-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

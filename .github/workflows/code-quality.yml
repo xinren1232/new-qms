@@ -1,0 +1,235 @@
+name: 📊 代码质量检查
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # 每周一凌晨2点运行
+
+jobs:
+  # 🔍 代码质量分析
+  code-quality:
+    name: 🔍 代码质量分析
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # SonarCloud 需要完整历史
+        
+    - name: 📦 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: 📦 设置 pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: '8'
+        
+    - name: 📦 安装依赖
+      run: pnpm install --frozen-lockfile
+      
+    - name: 🔍 ESLint 检查
+      run: pnpm run lint --format=json --output-file=eslint-report.json
+      continue-on-error: true
+      
+    - name: 🧪 运行测试并生成覆盖率
+      run: pnpm run test:coverage
+      
+    - name: 📊 SonarCloud 扫描
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        
+    - name: 📈 上传 ESLint 报告
+      uses: actions/upload-artifact@v3
+      with:
+        name: eslint-report
+        path: eslint-report.json
+        
+    - name: 📈 上传覆盖率报告
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/lcov.info
+        fail_ci_if_error: false
+
+  # 🔒 依赖安全检查
+  dependency-check:
+    name: 🔒 依赖安全检查
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 📦 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: 🔒 npm audit
+      run: npm audit --audit-level=moderate --json > npm-audit.json
+      continue-on-error: true
+      
+    - name: 🔒 Snyk 安全扫描
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --json > snyk-report.json
+      continue-on-error: true
+      
+    - name: 📈 上传安全报告
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          npm-audit.json
+          snyk-report.json
+
+  # 📏 代码复杂度分析
+  complexity-analysis:
+    name: 📏 代码复杂度分析
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 📦 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: 📦 安装分析工具
+      run: |
+        npm install -g complexity-report
+        npm install -g jscpd
+        
+    - name: 📏 复杂度分析
+      run: |
+        find . -name "*.js" -not -path "./node_modules/*" | xargs cr --format json > complexity-report.json
+        
+    - name: 🔍 重复代码检测
+      run: |
+        jscpd --format json --output ./jscpd-report.json ./backend ./frontend
+        
+    - name: 📈 上传分析报告
+      uses: actions/upload-artifact@v3
+      with:
+        name: complexity-reports
+        path: |
+          complexity-report.json
+          jscpd-report.json
+
+  # 📝 文档检查
+  documentation-check:
+    name: 📝 文档检查
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 📝 检查 README 链接
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'yes'
+        config-file: '.github/markdown-link-check-config.json'
+        
+    - name: 📝 检查文档完整性
+      run: |
+        echo "检查必要文档是否存在..."
+        required_docs=("README.md" "QUICK-START-GUIDE.md" "docs/deployment.md")
+        for doc in "${required_docs[@]}"; do
+          if [ ! -f "$doc" ]; then
+            echo "❌ 缺少文档: $doc"
+            exit 1
+          else
+            echo "✅ 文档存在: $doc"
+          fi
+        done
+
+  # 📊 生成质量报告
+  quality-report:
+    name: 📊 生成质量报告
+    runs-on: ubuntu-latest
+    needs: [code-quality, dependency-check, complexity-analysis, documentation-check]
+    if: always()
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 📦 下载所有报告
+      uses: actions/download-artifact@v3
+      
+    - name: 📊 生成综合质量报告
+      run: |
+        echo "# 🏆 QMS-AI 代码质量报告" > quality-report.md
+        echo "" >> quality-report.md
+        echo "**生成时间**: $(date)" >> quality-report.md
+        echo "**提交**: ${{ github.sha }}" >> quality-report.md
+        echo "**分支**: ${{ github.ref_name }}" >> quality-report.md
+        echo "" >> quality-report.md
+        
+        echo "## 📊 质量指标" >> quality-report.md
+        echo "" >> quality-report.md
+        
+        # 检查各个检查的状态
+        if [ "${{ needs.code-quality.result }}" == "success" ]; then
+          echo "- ✅ 代码质量检查: 通过" >> quality-report.md
+        else
+          echo "- ❌ 代码质量检查: 失败" >> quality-report.md
+        fi
+        
+        if [ "${{ needs.dependency-check.result }}" == "success" ]; then
+          echo "- ✅ 依赖安全检查: 通过" >> quality-report.md
+        else
+          echo "- ❌ 依赖安全检查: 失败" >> quality-report.md
+        fi
+        
+        if [ "${{ needs.complexity-analysis.result }}" == "success" ]; then
+          echo "- ✅ 复杂度分析: 通过" >> quality-report.md
+        else
+          echo "- ❌ 复杂度分析: 失败" >> quality-report.md
+        fi
+        
+        if [ "${{ needs.documentation-check.result }}" == "success" ]; then
+          echo "- ✅ 文档检查: 通过" >> quality-report.md
+        else
+          echo "- ❌ 文档检查: 失败" >> quality-report.md
+        fi
+        
+        echo "" >> quality-report.md
+        echo "## 📈 详细报告" >> quality-report.md
+        echo "" >> quality-report.md
+        echo "详细的分析报告请查看 GitHub Actions 的 Artifacts。" >> quality-report.md
+        
+    - name: 📈 上传质量报告
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-report
+        path: quality-report.md
+        
+    - name: 💬 评论 PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('quality-report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });

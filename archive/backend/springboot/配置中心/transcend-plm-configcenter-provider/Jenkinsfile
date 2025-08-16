@@ -1,0 +1,160 @@
+//编译配置，针对环境CI,DEV,SIT,UAT，PROD做不一样的配置
+def buildConfigJson='''{
+                  "projectGitUrl":"http://10.250.112.151:18888/plm/transcend-plm-configcenter.git",
+                  "gitCredentialsId":"f702bd84-0d8e-4cb2-8630-de7f94cdda61",
+                  "CI":{
+                    "branch":"dev",
+                    "skipTest":"true",
+                	"deployNexus":"true",
+                	"publish":"false",
+                	"publishServer":"",
+                	"publishServerUserName":"",
+                	"publishServerCredentials":""
+                  },
+                  "DEV":{
+                    "branch":"dev",
+                    "skipTest":"true",
+                	"deployNexus":"false",
+                	"publish":"true",
+                	"publishServer":"times-backend-10.250.112.125",
+                	"publishServerUserName":"trnuser",
+                	"publishServerCredentials":"AQAAABAAAAAQpinvcLW9EKpLMjcG5GD2hYyG3t5cY8fDLsFEiUvr7S8=",
+                	"remoteDirectory":"soft/transcend-plm/transcend-plm-configcenter",
+                    "execCommand":"cd /home/trnuser/soft/transcend-plm/transcend-plm-configcenter && sudo ./docker-rebuild.sh"
+                  },
+                  "SIT":{
+                    "branch":"sit",
+                    "skipTest":"true",
+                	"deployNexus":"false",
+                	"publish":"true",
+                	"publishServer":"times-backend-10.250.112.125",
+                	"publishServerUserName":"trnuser",
+                	"publishServerCredentials":"AQAAABAAAAAQpinvcLW9EKpLMjcG5GD2hYyG3t5cY8fDLsFEiUvr7S8=",
+                	"remoteDirectory":"soft/transcend-plm/transcend-plm-configcenter",
+                    "execCommand":"cd /home/trnuser/soft/transcend-plm/transcend-plm-configcenter && sudo ./docker-rebuild.sh"
+                  },
+                  "UAT":{
+                    "branch":"uat",
+                    "skipTest":"true",
+                	"deployNexus":"false",
+                	"publish":"true",
+                	"publishServer":"times-backend-10.250.112.125",
+                	"publishServerUserName":"trnuser",
+                	"publishServerCredentials":"AQAAABAAAAAQpinvcLW9EKpLMjcG5GD2hYyG3t5cY8fDLsFEiUvr7S8=",
+                	"remoteDirectory":"soft/transcend-plm/transcend-plm-configcenter",
+                    "execCommand":"cd /home/trnuser/soft/transcend-plm/transcend-plm-configcenter && sudo ./docker-rebuild.sh"
+                  },
+                  "configSshPublisher":{
+                    "sourceFiles":'transcend-plm-configcenter-provider/target/transcend-plm-configcenter-provider.jar',
+                    "removePrefix":"transcend-plm-configcenter-provider/target/"
+                  }
+
+}'''
+pipeline {
+	agent any
+	parameters {
+	        choice(name: 'p_publish_env', choices: ['CI','DEV', 'SIT', 'UAT'], description: '编译环境')
+	        string(name:'p_build_branch', defaultValue: 'default', description: 'CI,DEV, SIT, UAT不需要修改')
+        }
+    options{
+            timeout(time: 10, unit: 'MINUTES')
+            timestamps ()
+    }
+	stages {
+	    stage('清理工作空间') {
+			steps {
+				cleanWs()
+			}
+		}
+	    stage("预处理参数") {
+			steps {
+			    script
+		        {
+		           v_publish_env=params.p_publish_env
+		           if(!v_publish_env)
+		           {
+                       v_publish_env="CI"
+		           }
+		           buildConfig = readJSON text: buildConfigJson
+		           buildEnv =buildConfig.CI
+		           switch(v_publish_env)
+		           {
+		           case 'DEV':buildEnv=buildConfig.DEV
+		               break;
+		           case 'SIT':buildEnv=buildConfig.SIT
+		               break;
+		           case 'UAT':buildEnv=buildConfig.UAT
+		               break;
+		           }
+
+		           if(params.p_build_branch && params.p_build_branch != 'default')
+		           {
+		               buildEnv.branch=params.p_build_branch
+		           }
+		           echo "编译环境："+params.p_publish_env
+		           echo "编译分支："+buildEnv.branch
+		        }
+			}
+		}
+		stage('拉取代码') {
+			steps {
+			    script{
+            		      echo "代码地址："+buildConfig.projectGitUrl
+            		      echo "代码分支："+buildEnv.branch
+            		  }
+				checkout([$class: 'GitSCM',branches: [[name: "$buildEnv.branch"]],extensions: [],userRemoteConfigs: [[credentialsId: buildConfig.gitCredentialsId,url:buildConfig.projectGitUrl ]]])
+			}
+		}
+		stage('编译打包') {
+			steps {
+			    script{
+			        mavenGoal="package"
+                    if(buildEnv.deployNexus=='true')
+                    {
+                        mavenGoal="deploy"
+                    }
+                    echo "maven goal:"+mavenGoal
+                }
+			    withMaven(jdk: 'openjdk 1.8.0', maven: 'maven 3.6.1', mavenLocalRepo: '/data/maven/repository') {
+                sh encoding: 'UTF-8',label: 'maven build', returnStdout: true, script: "mvn clean $mavenGoal -Dmaven.test.skip=true"
+                }
+			}
+        }
+        stage('单元测试') {
+            when{
+                equals expected: 'false', actual: buildEnv.skipTest
+            }
+        	steps{
+        	    script{
+                    echo '开始单元测试'
+                }
+        		withMaven(jdk: 'openjdk 1.8.0', maven: 'maven 3.6.1', mavenLocalRepo: '/data/maven/repository') {
+                     sh encoding: 'UTF-8',label: 'maven test', returnStdout: true, script: "mvn test -Dmaven.test.skip=false -Dmaven.test.failure.ignore=true"
+                     sh encoding: 'UTF-8',label: '生成单元测试报告', returnStdout: true, script: 'mvn jacoco:report'
+                }
+        	}
+        }
+        stage("发布服务器"){
+            when{
+                   equals expected: 'true', actual: buildEnv.publish
+                }
+           steps{
+               script{
+                      echo '发布服务器:'+buildEnv.publishServer
+              }
+              sshPublisher(publishers: [sshPublisherDesc(configName: buildEnv.publishServer,
+                  sshCredentials: [encryptedPassphrase: "{$buildEnv.publishServerCredentials}", key: '', keyPath: '',
+                  username: buildEnv.publishServerUserName],
+                  transfers: [sshTransfer(cleanRemote: false, excludes: '',
+                      execCommand: buildEnv.execCommand,
+                      execTimeout: 120000, flatten: false, makeEmptyDirs: false,
+                      noDefaultExcludes: false, patternSeparator: '[, ]+',
+                      remoteDirectory: buildEnv.remoteDirectory,
+                      remoteDirectorySDF: false,
+                      removePrefix: buildConfig.configSshPublisher.removePrefix,
+                      sourceFiles: buildConfig.configSshPublisher.sourceFiles)],
+               usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+          }
+       }
+   }
+}

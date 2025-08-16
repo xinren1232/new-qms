@@ -1,0 +1,180 @@
+.clearfix::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  clear: both;
+}
+
+@for $i from 2 through 4 {
+  .ellipsis-line#{$i} {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: $i;
+    overflow: hidden;
+  }
+}
+
+.vue-grid-item.vue-grid-placeholder {
+  background: #cbd0cb !important;
+}
+
+.active-color {
+  color: var(--primary) !important;
+}
+
+.danger-color {
+  color: var(--danger) !important
+}
+
+.success-color {
+  color: var(--success) !important;
+}
+
+.w-max {
+  max-width: 100%;
+}
+.gap-x-3 {
+  gap: 0 .75rem
+}
+
+.container-wrapper + .container-wrapper {
+  margin-top: 10px
+}
+
+.rich-text-container {
+  z-index: 2
+}
+
+.clickable:hover {
+  background-color: var(--info-lighter)
+}
+
+.clickable:active {
+  background-color: var(--info-light)
+}
+
+.hover-primary-9:hover {
+  background-color: var(--primary-9)
+}
+
+.active-primary-8:active {
+  background-color: var(--primary-8)
+}
+
+
+.form-disabled .is-required .el-form-item__label::before,
+.form-disabled
+  .el-form-item.is-required:not(.is-no-asterisk)
+  .el-form-item__label-wrap
+  > .el-form-item__label:before,
+.form-disabled
+  .el-form-item.is-required:not(.is-no-asterisk)
+  > .el-form-item__label:before {
+  display: none !important;
+}
+
+
+// 按钮内的图标和文字有一点间距
+.el-button:not(.no-gap) span > .tr-svg-icon {
+  margin-right: 5px;
+  transform: translateY(1px);
+}
+
+.vxe-header--column.col--checkbox {
+  .vxe-cell .vxe-cell--title {
+    font-size: 0;
+  }
+}
+
+.table-mutiple-style{
+  .col--checkbox{
+    .vxe-cell{
+      position: relative;
+      top: -1px;
+    }
+  }
+  tr{
+    .col--checkbox>div{
+        width: 70px !important;
+    }
+  }
+}
+
+.pub-tooltip-box {
+  display: flex;
+  align-items: center;
+  .toopltip-content {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    margin: 5px 0;
+    .toopltip-content-name {
+      margin-right: 20px;
+    }
+  }
+}
+
+.pub-tooltip-box--series{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  .toopltip-content-value{
+    margin-left: 10px;
+  }
+}
+
+.ovinherit{
+  overflow: inherit !important;
+}
+
+.ovinitial{
+  overflow: initial !important;
+  .el-dialog__body{
+    overflow: inherit !important;
+  }
+}
+
+@keyframes ant-line {
+  to {
+    stroke-dashoffset: -1000
+  }
+}
+
+.tools-box {
+  padding: 10px;
+  display: flex;
+  align-items: center;
+
+  .btn-box {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 8px;
+    color: var(--primary);
+    width: fit-content;
+    user-select: none;
+
+    .text {
+      font-size: 14px;
+      vertical-align: -0.2em;
+    }
+
+    .tr-svg-icon {
+      font-size: 16px;
+      margin-right: 4px;
+      vertical-align: -0.15em;
+    }
+
+    &:hover {
+      background-color: #EAEDEC;
+      border-radius: 4px;
+    }
+
+    &:active {
+      background-color: #dee1e0;
+    }
+  }
+}

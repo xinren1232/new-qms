@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.filemanagement.mapper.CfgFileTypeRuleRelMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.filemanagement.domain.CfgFileTypeRuleRel">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="ruleBid" column="rule_bid" jdbcType="VARCHAR"/>
+            <result property="fileTypeBid" column="file_type_bid" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,rule_bid,
+        file_type_bid,tenant_id,created_by,
+        created_time,updated_by,updated_time,
+        delete_flag,enable_flag
+    </sql>
+
+    <delete id="deleteByRuleBid">
+        DELETE FROM cfg_file_type_rule_rel WHERE rule_bid = #{ruleBid} and file_type_bid IN
+        <foreach collection="fileTypeBidList" item="fileTypeBid" separator="," open="(" close=")">
+            #{fileTypeBid}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByFileTypeBid">
+        DELETE FROM cfg_file_type_rule_rel WHERE file_type_bid = #{fileTypeBid} and rule_bid IN
+        <foreach collection="ruleBidList" item="ruleBid" separator="," open="(" close=")">
+            #{ruleBid}
+        </foreach>
+    </delete>
+
+    <select id="queryFileTypeCodeWithRuleNameList" resultType="com.transcend.plm.configcenter.api.model.filemanagement.vo.CfgFileTypeRelRuleNameVo">
+        select t3.code as fileTypeCode, t1.name as copyRuleName
+        from cfg_file_copy_rule t1
+                 inner join cfg_file_type_rule_rel t2
+                            on t1.bid = t2.rule_bid
+                 inner join cfg_file_type t3 on t2.file_type_bid = t3.bid
+        where t1.delete_flag = 0 and t1.enable_flag = 1
+          and t2.delete_flag = 0
+          and t3.delete_flag = 0
+          <if test="copyRuleName != null and copyRuleName != '' and copyRuleName != 'all'">
+              and t1.name like concat('%', #{copyRuleName}, '%');
+          </if>
+    </select>
+</mapper>

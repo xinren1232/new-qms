@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.datadriven.filemanager.mapper.FileCopyExecutionRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.datadriven.filemanager.pojo.po.FileCopyExecutionRecordPo">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="fileId" column="file_id" jdbcType="VARCHAR"/>
+            <result property="fileName" column="file_name" jdbcType="VARCHAR"/>
+            <result property="fileSize" column="file_size" jdbcType="INTEGER"/>
+            <result property="fileType" column="file_type" jdbcType="VARCHAR"/>
+            <result property="sourceFileLibrary" column="source_file_library" jdbcType="VARCHAR"/>
+            <result property="targetFileLibrary" column="target_file_library" jdbcType="VARCHAR"/>
+            <result property="copyMode" column="copy_mode" jdbcType="INTEGER"/>
+            <result property="operationType" column="operation_type" jdbcType="VARCHAR"/>
+            <result property="executeState" column="execute_state" jdbcType="INTEGER"/>
+            <result property="timeout" column="timeout" jdbcType="INTEGER"/>
+            <result property="nextExecuteTime" column="next_execute_time" jdbcType="TIMESTAMP"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="executionTimes" column="execution_times" jdbcType="INTEGER"/>
+            <result property="executionResult" column="execution_result" jdbcType="VARCHAR"/>
+            <result property="sourcePath" column="source_path" jdbcType="VARCHAR"/>
+            <result property="targetPath" column="target_path" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        `id`,bid,file_id,
+        file_name,file_size,file_type,source_file_library,
+        target_file_library,copy_mode,operation_type,
+        execute_state,timeout,next_execute_time,
+        created_time,updated_time,execution_times,
+        execution_result,source_path,target_path
+    </sql>
+
+    <select id="queryPageByCondition" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from file_copy_execution_record
+        where execute_state in
+        <foreach collection="ao.executeState" item="state" open="(" close=")" separator=",">
+            #{state}
+        </foreach>
+
+        <if test="ao.fileName != null and ao.fileName != ''">
+            and file_name like concat('%', #{ao.fileName}, '%')
+        </if>
+        <if test="ao.fileTypeCodes != null and ao.fileTypeCodes.size()>0">
+            and file_type in
+            <foreach collection="ao.fileTypeCodes" item="fileTypeCode" open="(" close=")" separator=",">
+                #{fileTypeCode}
+            </foreach>
+        </if>
+        <if test="ao.executeStartTime != null and ao.executeStartTime != ''">
+            and next_execute_time >= #{ao.executeStartTime}
+        </if>
+        <if test="ao.executeEndTime != null and ao.executeEndTime != ''">
+            and next_execute_time &lt;= #{ao.executeEndTime}
+        </if>
+        order by created_time desc
+    </select>
+</mapper>

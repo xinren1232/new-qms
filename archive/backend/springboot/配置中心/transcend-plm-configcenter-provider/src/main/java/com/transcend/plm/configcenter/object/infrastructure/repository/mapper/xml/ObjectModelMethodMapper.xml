@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.ObjectModelMethodMapper">
+  <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.ModelMethodPO">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="bid" jdbcType="VARCHAR" property="bid" />
+    <result column="enable_flag" jdbcType="VARCHAR" property="enableFlag" />
+    <result column="action_method" jdbcType="VARCHAR" property="actionMethod" />
+    <result column="method_type" jdbcType="TINYINT" property="methodType" />
+    <result column="reference_class_name" jdbcType="VARCHAR" property="referenceClassName" />
+    <result column="execute_method_name" jdbcType="VARCHAR" property="executeMethodName" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="description" jdbcType="VARCHAR" property="description" />
+    <result column="sync" jdbcType="TINYINT" property="sync" />
+    <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+    <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+    <result column="created_by" jdbcType="VARCHAR" property="createdBy" />
+    <result column="updated_by" jdbcType="VARCHAR" property="updatedBy" />
+    <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+    <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+    <result column="method_code" jdbcType="VARCHAR" property="methodCode" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    id, bid, enable_flag, action_method, method_type, reference_class_name,
+    execute_method_name, `name`, description, sync, created_time, updated_time,
+    created_by, updated_by, app_id, company_id, method_code
+  </sql>
+  <delete id="deleteByBid">
+        delete from model_method where bid=#{bid}
+    </delete>
+  <select id="query" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List"/>
+    from model_method
+    where 1=1
+    <if test="qo.name!=null and qo.name!=''">
+      AND name LIKE concat(concat('%',#{qo.name,jdbcType=VARCHAR}),'%')
+    </if>
+    <if test="qo.enableFlag!=null and qo.enableFlag!=''">
+      AND enable_flag = #{qo.enableFlag}
+    </if>
+    order by updated_time desc
+  </select>
+  <select id="findByBid" resultType="com.transcend.plm.configcenter.object.infrastructure.po.ModelMethodPO">
+    select <include refid="Base_Column_List"/> from model_method where bid = #{bid}
+  </select>
+  <select id="findName" resultType="com.transcend.plm.configcenter.object.infrastructure.po.ModelMethodPO">
+    select <include refid="Base_Column_List"/> from model_method where `name` = #{methodName}
+  </select>
+  <insert id="bulkInsert">
+    insert into model_method (
+    bid,
+    enable_flag,
+    action_method,
+    method_type,
+    reference_class_name,
+    execute_method_name,
+    name,
+    description,
+    sync,
+    created_time,
+    updated_time,
+    created_by,
+    updated_by,
+    app_id,
+    company_id,
+    method_code
+    )
+    values
+    <foreach collection="records" separator="," item="domain">
+      (
+        #{domain.bid,jdbcType=VARCHAR},
+        #{domain.enableFlag,jdbcType=VARCHAR},
+        #{domain.actionMethod,jdbcType=VARCHAR},
+        #{domain.methodType,jdbcType=TINYINT},
+        #{domain.referenceClassName,jdbcType=VARCHAR},
+        #{domain.executeMethodName,jdbcType=VARCHAR},
+        #{domain.name,jdbcType=VARCHAR},
+        #{domain.description,jdbcType=VARCHAR},
+        #{domain.sync,jdbcType=TINYINT},
+        #{domain.createdTime,jdbcType=TIMESTAMP},
+        #{domain.updatedTime,jdbcType=TIMESTAMP},
+        #{domain.createdBy,jdbcType=VARCHAR},
+        #{domain.updatedBy,jdbcType=VARCHAR},
+        #{domain.appId,jdbcType=VARCHAR},
+        #{domain.companyId,jdbcType=INTEGER},
+        #{domain.methodCode,jdbcType=BLOB}
+      )
+    </foreach>
+  </insert>
+  <update id="bulkUpdate" parameterType="com.transcend.plm.configcenter.object.infrastructure.po.ModelMethodPO">
+    <foreach collection="records" item="domain" index="index" separator=";">
+      update model_method
+      <set>
+        <if test="domain.bid != null">
+          bid = #{domain.bid,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.enableFlag != null">
+          enable_flag = #{domain.enableFlag,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.actionMethod != null">
+          action_method = #{domain.actionMethod,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.methodType != null">
+          method_type = #{domain.methodType,jdbcType=TINYINT},
+        </if>
+        <if test="domain.referenceClassName != null">
+          reference_class_name = #{domain.referenceClassName,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.executeMethodName != null">
+          execute_method_name = #{domain.executeMethodName,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.name != null">
+          name = #{domain.name,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.description != null">
+          description = #{domain.description,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.sync != null">
+          sync = #{domain.sync,jdbcType=TINYINT},
+        </if>
+        <if test="domain.createdTime != null">
+          created_time = #{domain.createdTime,jdbcType=TIMESTAMP},
+        </if>
+        <if test="domain.updatedTime != null">
+          updated_time = #{domain.updatedTime,jdbcType=TIMESTAMP},
+        </if>
+        <if test="domain.createdBy != null">
+          created_by = #{domain.createdBy,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.updatedBy != null">
+          updated_by = #{domain.updatedBy,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.appId != null">
+          app_id = #{domain.appId,jdbcType=VARCHAR},
+        </if>
+        <if test="domain.companyId != null">
+          company_id = #{domain.companyId,jdbcType=INTEGER},
+        </if>
+        <if test="domain.methodCode != null">
+          method_code = #{domain.methodCode,jdbcType=BLOB}
+        </if>
+      </set>
+      where bid = #{domain.bid,jdbcType=VARCHAR}
+    </foreach>
+  </update>
+</mapper>

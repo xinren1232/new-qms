@@ -1,0 +1,228 @@
+version: '3.8'
+
+services:
+  # 配置中心主节点
+  config-primary:
+    build: ./backend/配置端
+    container_name: qms-config-primary
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=production
+      - NODE_ROLE=primary
+      - CLUSTER_NODES=config-secondary:8081,config-tertiary:8081
+      - DB_HOST=postgres
+      - DB_NAME=qms_config
+      - DB_USER=qms_app
+      - DB_PASSWORD=qms123
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6379
+      - LOG_LEVEL=info
+    volumes:
+      - config-data-1:/app/data
+      - config-logs-1:/app/logs
+    depends_on:
+      - postgres
+      - redis-master
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 配置中心从节点1
+  config-secondary:
+    build: ./backend/配置端
+    container_name: qms-config-secondary
+    ports:
+      - "8082:8081"
+    environment:
+      - NODE_ENV=production
+      - NODE_ROLE=secondary
+      - CLUSTER_NODES=config-primary:8081,config-tertiary:8081
+      - DB_HOST=postgres
+      - DB_NAME=qms_config
+      - DB_USER=qms_app
+      - DB_PASSWORD=qms123
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6379
+      - LOG_LEVEL=info
+    volumes:
+      - config-data-2:/app/data
+      - config-logs-2:/app/logs
+    depends_on:
+      - postgres
+      - redis-master
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 配置中心从节点2
+  config-tertiary:
+    build: ./backend/配置端
+    container_name: qms-config-tertiary
+    ports:
+      - "8083:8081"
+    environment:
+      - NODE_ENV=production
+      - NODE_ROLE=tertiary
+      - CLUSTER_NODES=config-primary:8081,config-secondary:8081
+      - DB_HOST=postgres
+      - DB_NAME=qms_config
+      - DB_USER=qms_app
+      - DB_PASSWORD=qms123
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6379
+      - LOG_LEVEL=info
+    volumes:
+      - config-data-3:/app/data
+      - config-logs-3:/app/logs
+    depends_on:
+      - postgres
+      - redis-master
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 配置中心负载均衡器
+  config-lb:
+    image: nginx:alpine
+    container_name: qms-config-lb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config/nginx-config-lb.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx-logs:/var/log/nginx
+    depends_on:
+      - config-primary
+      - config-secondary
+      - config-tertiary
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:13-alpine
+    container_name: qms-postgres
+    environment:
+      POSTGRES_DB: qms_config
+      POSTGRES_USER: qms_app
+      POSTGRES_PASSWORD: qms123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./config/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qms_app -d qms_config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis主节点
+  redis-master:
+    image: redis:6-alpine
+    container_name: qms-redis-master
+    volumes:
+      - ./config/redis/redis-master.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_master_data:/data
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis从节点
+  redis-slave:
+    image: redis:6-alpine
+    container_name: qms-redis-slave
+    volumes:
+      - ./config/redis/redis-slave.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_slave_data:/data
+    command: redis-server /usr/local/etc/redis/redis.conf
+    depends_on:
+      - redis-master
+    ports:
+      - "6380:6379"
+    networks:
+      - qms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis哨兵
+  redis-sentinel:
+    image: redis:6-alpine
+    container_name: qms-redis-sentinel
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    volumes:
+      - ./config/redis/sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
+    depends_on:
+      - redis-master
+      - redis-slave
+    ports:
+      - "26379:26379"
+    networks:
+      - qms-network
+    restart: unless-stopped
+
+volumes:
+  config-data-1:
+    driver: local
+  config-data-2:
+    driver: local
+  config-data-3:
+    driver: local
+  config-logs-1:
+    driver: local
+  config-logs-2:
+    driver: local
+  config-logs-3:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_master_data:
+    driver: local
+  redis_slave_data:
+    driver: local
+
+networks:
+  qms-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

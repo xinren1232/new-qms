@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.table.infrastructure.repository.mapper.CfgTableAttributeMapper">
+    <resultMap id="BaseResultMap"
+               type="com.transcend.plm.configcenter.table.infrastructure.repository.po.CfgTableAttributePo">
+        <id column="table_item_id" jdbcType="INTEGER" property="id"/>
+        <result column="table_item_table_bid" jdbcType="VARCHAR" property="tableBid"/>
+        <result column="table_item_bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="table_item_column_name" jdbcType="VARCHAR" property="columnName"/>
+        <result column="table_item_property" jdbcType="VARCHAR" property="property"/>
+        <result column="table_item_type" jdbcType="VARCHAR" property="type"/>
+        <result column="table_item_base_flag" jdbcType="TINYINT" property="baseFlag"/>
+        <result column="table_item_enable_flag" jdbcType="INTEGER" property="enableFlag"/>
+        <result column="table_item_index" jdbcType="TINYINT" property="index"/>
+        <result column="table_item_tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="table_item_created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="table_item_updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="table_item_created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="table_item_updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="table_item_delete_flag" jdbcType="TINYINT" property="deleteFlag"/>
+        <result column="table_item_default_value" jdbcType="VARCHAR" property="defaultValue"/>
+        <result column="table_item_comment" jdbcType="VARCHAR" property="comment"/>
+        <result column="table_item_required" jdbcType="BIT" property="required"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+    cfg_table_attribute.table_bid as table_item_table_bid,
+    cfg_table_attribute.id as table_item_id,
+    cfg_table_attribute.bid as table_item_bid,
+    cfg_table_attribute.enable_flag as table_item_enable_flag,
+    cfg_table_attribute.column_name as table_item_column_name,
+    cfg_table_attribute.property as table_item_property,
+    cfg_table_attribute.type as table_item_type,
+    cfg_table_attribute.index as table_item_index,
+    cfg_table_attribute.base_flag as table_item_base_flag,
+    cfg_table_attribute.tenant_id as table_item_tenant_id, cfg_table_attribute.created_time as table_item_created_time,
+    cfg_table_attribute.updated_time as table_item_updated_time, cfg_table_attribute.created_by as table_item_created_by,
+    cfg_table_attribute.updated_by as table_item_updated_by,
+    cfg_table_attribute.default_value as table_item_default_value,
+    cfg_table_attribute.comment as table_item_comment,
+    cfg_table_attribute.required as table_item_required
+  </sql>
+    <update id="blukUpdateByBid">
+        <foreach collection="items" open="" close="" separator=";" item="item">
+            update cfg_table_attribute cfg_table_attribute
+            set
+            `table_bid` = #{item.tableBid,jdbcType=VARCHAR},
+            `column_name` = #{item.column,jdbcType=VARCHAR},
+            `property` = #{item.property,jdbcType=VARCHAR},
+            `type` = #{item.type,jdbcType=VARCHAR},
+            `base_flag` = #{item.baseFlag,jdbcType=TINYINT},
+            `enable_flag` = #{item.enableFlag,jdbcType=VARCHAR}
+            where `bid` = #{item.bid,jdbcType=VARCHAR}
+        </foreach>
+    </update>
+    <select id="listTableAttributeByTableBids" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from cfg_table_attribute cfg_table_attribute
+        where table_bid IN
+        <foreach collection="tableBids" item="bid" index="index" open="(" close=")" separator=",">
+            #{bid,jdbcType=VARCHAR}
+        </foreach>
+        <if test="enableFlag != null and enableFlag !=''">
+            AND enable_flag = #{enableFlag}
+        </if>
+        AND delete_flag = 0
+
+    </select>
+
+</mapper>

@@ -1,0 +1,227 @@
+name: 🔒 安全扫描
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * 2'  # 每周二凌晨3点运行
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # 🔍 CodeQL 分析
+  codeql:
+    name: 🔍 CodeQL 分析
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript' ]
+        
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔍 初始化 CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+        
+    - name: 🏗️ 自动构建
+      uses: github/codeql-action/autobuild@v2
+      
+    - name: 🔍 执行 CodeQL 分析
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"
+
+  # 🔒 依赖漏洞扫描
+  dependency-scan:
+    name: 🔒 依赖漏洞扫描
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 📦 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: 🔒 npm audit
+      run: |
+        npm audit --audit-level=moderate --json > npm-audit-report.json || true
+        
+    - name: 🔒 Snyk 安全扫描
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=medium --json > snyk-report.json
+      continue-on-error: true
+      
+    - name: 📊 上传 Snyk 结果到 GitHub
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: snyk.sarif
+        
+    - name: 📈 上传安全报告
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          npm-audit-report.json
+          snyk-report.json
+
+  # 🔐 密钥扫描
+  secret-scan:
+    name: 🔐 密钥扫描
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🔐 TruffleHog 密钥扫描
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  # 🛡️ 容器安全扫描
+  container-scan:
+    name: 🛡️ 容器安全扫描
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🐳 构建 Docker 镜像
+      run: |
+        docker build -t qms-ai:latest -f config/Dockerfile .
+        
+    - name: 🛡️ Trivy 容器扫描
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'qms-ai:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: 📊 上传 Trivy 结果
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # 🔍 SAST 静态分析
+  sast-scan:
+    name: 🔍 SAST 静态分析
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Semgrep 扫描
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/owasp-top-ten
+          p/javascript
+        generateSarif: "1"
+        
+    - name: 📊 上传 Semgrep 结果
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: semgrep.sarif
+
+  # 📊 安全报告汇总
+  security-summary:
+    name: 📊 安全报告汇总
+    runs-on: ubuntu-latest
+    needs: [codeql, dependency-scan, secret-scan, container-scan, sast-scan]
+    if: always()
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 📦 下载安全报告
+      uses: actions/download-artifact@v3
+      with:
+        name: security-reports
+        path: ./security-reports/
+        
+    - name: 📊 生成安全摘要
+      run: |
+        echo "# 🔒 QMS-AI 安全扫描报告" > security-summary.md
+        echo "" >> security-summary.md
+        echo "**扫描时间**: $(date)" >> security-summary.md
+        echo "**提交**: ${{ github.sha }}" >> security-summary.md
+        echo "**分支**: ${{ github.ref_name }}" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        echo "## 🛡️ 扫描结果" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        # 检查各个扫描的状态
+        if [ "${{ needs.codeql.result }}" == "success" ]; then
+          echo "- ✅ CodeQL 分析: 通过" >> security-summary.md
+        else
+          echo "- ❌ CodeQL 分析: 发现问题" >> security-summary.md
+        fi
+        
+        if [ "${{ needs.dependency-scan.result }}" == "success" ]; then
+          echo "- ✅ 依赖漏洞扫描: 通过" >> security-summary.md
+        else
+          echo "- ❌ 依赖漏洞扫描: 发现漏洞" >> security-summary.md
+        fi
+        
+        if [ "${{ needs.secret-scan.result }}" == "success" ]; then
+          echo "- ✅ 密钥扫描: 通过" >> security-summary.md
+        else
+          echo "- ❌ 密钥扫描: 发现敏感信息" >> security-summary.md
+        fi
+        
+        if [ "${{ needs.container-scan.result }}" == "success" ]; then
+          echo "- ✅ 容器安全扫描: 通过" >> security-summary.md
+        else
+          echo "- ❌ 容器安全扫描: 发现漏洞" >> security-summary.md
+        fi
+        
+        if [ "${{ needs.sast-scan.result }}" == "success" ]; then
+          echo "- ✅ SAST 静态分析: 通过" >> security-summary.md
+        else
+          echo "- ❌ SAST 静态分析: 发现问题" >> security-summary.md
+        fi
+        
+        echo "" >> security-summary.md
+        echo "## 📋 建议" >> security-summary.md
+        echo "" >> security-summary.md
+        echo "1. 定期更新依赖包到最新版本" >> security-summary.md
+        echo "2. 及时修复发现的安全漏洞" >> security-summary.md
+        echo "3. 遵循安全编码最佳实践" >> security-summary.md
+        echo "4. 定期进行安全审计" >> security-summary.md
+        
+    - name: 📈 上传安全摘要
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-summary
+        path: security-summary.md

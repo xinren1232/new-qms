@@ -1,0 +1,320 @@
+# QMS-AI阿里云优化部署配置
+# 解决内存使用率过高问题，适配云端环境
+
+version: '3.8'
+
+services:
+  # Nginx反向代理 - 优化内存使用
+  qms-nginx:
+    image: nginx:alpine
+    container_name: qms-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - qms-auth-service
+      - qms-config-service
+      - qms-chat-service
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.2'
+        reservations:
+          memory: 32M
+          cpus: '0.1'
+
+  # QMS认证服务 - 内存优化
+  qms-auth-service:
+    build:
+      context: ../backend/nodejs
+      dockerfile: Dockerfile.auth
+    container_name: qms-auth-service
+    ports:
+      - "8084:8084"
+    environment:
+      - NODE_ENV=production
+      - PORT=8084
+      - NODE_OPTIONS=--max-old-space-size=128
+      - DB_HOST=${ALIYUN_RDS_HOST}
+      - DB_PORT=3306
+      - DB_NAME=${ALIYUN_RDS_DATABASE}
+      - DB_USER=${ALIYUN_RDS_USER}
+      - DB_PASSWORD=${ALIYUN_RDS_PASSWORD}
+      - REDIS_HOST=${ALIYUN_REDIS_HOST}
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${ALIYUN_REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    volumes:
+      - ./logs/auth:/app/logs
+    depends_on:
+      - qms-mysql
+      - qms-redis
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # QMS配置中心服务 - 内存优化
+  qms-config-service:
+    build:
+      context: ../backend/nodejs
+      dockerfile: Dockerfile.config
+    container_name: qms-config-service
+    ports:
+      - "8083:8083"
+    environment:
+      - NODE_ENV=production
+      - PORT=8083
+      - NODE_OPTIONS=--max-old-space-size=128
+      - REDIS_HOST=${ALIYUN_REDIS_HOST}
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${ALIYUN_REDIS_PASSWORD}
+    volumes:
+      - ./logs/config:/app/logs
+      - config_data:/app/config/data
+    depends_on:
+      - qms-redis
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # QMS聊天服务 - 主要服务，适度分配资源
+  qms-chat-service:
+    build:
+      context: ../backend/nodejs
+      dockerfile: Dockerfile.chat
+    container_name: qms-chat-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - PORT=3004
+      - NODE_OPTIONS=--max-old-space-size=256
+      - DB_HOST=${ALIYUN_RDS_HOST}
+      - DB_PORT=3306
+      - DB_NAME=${ALIYUN_RDS_DATABASE}
+      - DB_USER=${ALIYUN_RDS_USER}
+      - DB_PASSWORD=${ALIYUN_RDS_PASSWORD}
+      - REDIS_HOST=${ALIYUN_REDIS_HOST}
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${ALIYUN_REDIS_PASSWORD}
+      - CONFIG_SERVICE_URL=http://qms-config-service:8083
+      - TRANSSION_API_KEY=${TRANSSION_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    volumes:
+      - ./logs/chat:/app/logs
+    depends_on:
+      - qms-mysql
+      - qms-redis
+      - qms-config-service
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MySQL数据库 - 方案A本地数据库
+  qms-mysql:
+    image: mysql:8.0
+    container_name: qms-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=Zxylsy99_mysql_root
+      - MYSQL_DATABASE=qms_ai
+      - MYSQL_USER=qms_admin
+      - MYSQL_PASSWORD=Zxylsy99_mysql
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "qms_admin", "-pZxylsy99_mysql"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis缓存 - 方案A本地Redis
+  qms-redis:
+    image: redis:7-alpine
+    container_name: qms-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass Zxylsy99_redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "Zxylsy99_redis", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # QMS前端服务 - 静态文件服务
+  qms-frontend:
+    build:
+      context: ../frontend/应用端
+      dockerfile: Dockerfile.prod
+    container_name: qms-frontend
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - qms-auth-service
+      - qms-config-service
+      - qms-chat-service
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.2'
+        reservations:
+          memory: 32M
+          cpus: '0.1'
+
+  # Prometheus监控 - 轻量级配置
+  qms-prometheus:
+    image: prom/prometheus:latest
+    container_name: qms-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.size=1GB'
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.3'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # Grafana监控面板 - 轻量级配置
+  qms-grafana:
+    image: grafana/grafana:latest
+    container_name: qms-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - qms-prometheus
+    networks:
+      - qms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  config_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  qms-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

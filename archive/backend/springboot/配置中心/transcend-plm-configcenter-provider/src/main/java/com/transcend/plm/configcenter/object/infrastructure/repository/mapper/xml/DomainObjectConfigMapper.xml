@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.object.infrastructure.repository.mapper.DomainObjectConfigMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.object.infrastructure.po.DomainObjectConfigPo">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="bid" jdbcType="VARCHAR" property="bid"/>
+        <result column="domain_bid" jdbcType="VARCHAR" property="domainBid"/>
+        <result column="obj_bid" jdbcType="VARCHAR" property="objBid"/>
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="base_model" jdbcType="VARCHAR" property="baseModel"/>
+        <result column="lc_templ_bid" jdbcType="VARCHAR" property="lcTemplBid"/>
+        <result column="lc_templ_version" jdbcType="VARCHAR" property="lcTemplVersion"/>
+        <result column="templ_bid" jdbcType="VARCHAR" property="templBid"/>
+        <result column="init_state" jdbcType="VARCHAR" property="initState"/>
+        <result column="note" jdbcType="VARCHAR" property="note"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime"/>
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime"/>
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy"/>
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy"/>
+        <result column="delete_flag" jdbcType="VARCHAR" property="deleteFlag"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+    id, bid, domain_bid, obj_bid, model_code, `type`, base_model, lc_templ_bid, lc_templ_version,
+    templ_bid, init_state, note, company_id, created_time, updated_time, created_by,
+    updated_by, app_id
+    </sql>
+
+    <insert id="bulkInsert">
+        insert into domain_object_config
+        (bid, domain_bid, obj_bid, model_code, `type`, base_model, lc_templ_bid, lc_templ_version,
+        templ_bid, init_state, note, company_id, created_time, updated_time, created_by,
+        updated_by, app_id)
+        values
+        <foreach collection="poList" item="item" separator=",">
+            (#{item.bid,jdbcType=VARCHAR}, #{item.domainBid,jdbcType=VARCHAR}, #{item.objBid,jdbcType=VARCHAR},
+            #{item.modelCode,jdbcType=VARCHAR}, #{item.type,jdbcType=VARCHAR}, #{item.baseModel,jdbcType=VARCHAR},
+            #{item.lcTemplBid,jdbcType=VARCHAR}, #{item.lcTemplVersion,jdbcType=VARCHAR},
+            #{item.templBid,jdbcType=VARCHAR},
+            #{item.initState,jdbcType=VARCHAR}, #{item.note,jdbcType=VARCHAR}, #{item.companyId,jdbcType=INTEGER},
+            #{item.createdTime,jdbcType=TIMESTAMP}, #{item.updatedTime,jdbcType=TIMESTAMP},
+            #{item.createdBy,jdbcType=VARCHAR}, #{item.updatedBy,jdbcType=VARCHAR}, #{item.appId,jdbcType=VARCHAR})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByDomainBid">
+        delete from domain_object_config
+        where domain_bid = #{domainBid,jdbcType=VARCHAR}
+    </delete>
+
+    <delete id="deleteByBid">
+        delete from domain_object_config
+        where bid = #{bid,jdbcType=VARCHAR}
+    </delete>
+
+    <select id="findByDomainBid" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from domain_object_config
+        where domain_bid = #{domainBid,jdbcType=VARCHAR}
+    </select>
+
+    <select id="find" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from domain_object_config
+        <where>
+                1=1
+                <if test="domainObjConfigQO.bid!=null and domainObjConfigQO.bid!=''">
+                    and bid=#{domainObjConfigQO.bid}
+                </if>
+                <if test="domainObjConfigQO.type!=null and domainObjConfigQO.type!=''">
+                    and type=#{domainObjConfigQO.type}
+                </if>
+                <if test="domainObjConfigQO.baseModel!=null and domainObjConfigQO.baseModel!=''">
+                    and  base_model=#{domainObjConfigQO.baseModel}
+                </if>
+                <if test="domainObjConfigQO.objBid!=null and domainObjConfigQO.objBid!=''">
+                    and  obj_bid=#{domainObjConfigQO.objBid}
+                </if>
+                <if test="domainObjConfigQO.lcTemplBid!=null and domainObjConfigQO.lcTemplBid!=''">
+                    and lc_templ_bid=#{domainObjConfigQO.lcTemplBid}
+                </if>
+                <if test="domainObjConfigQO.lcTemplVersion!=null and domainObjConfigQO.lcTemplVersion!=''">
+                    and lc_templ_version=#{domainObjConfigQO.lcTemplVersion}
+                </if>
+                <if test="domainObjConfigQO.templBid!=null and domainObjConfigQO.templBid!=''">
+                    and  templ_bid=#{domainObjConfigQO.templBid}
+                </if>
+                <if test="domainObjConfigQO.domainBid!=null and domainObjConfigQO.domainBid!=''">
+                    and domain_bid=#{domainObjConfigQO.domainBid}
+                </if>
+        </where>
+    </select>
+
+</mapper>

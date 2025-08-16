@@ -1,0 +1,250 @@
+# QMS智能管理系统 - 企业集成配置
+
+# Casdoor配置
+casdoor:
+  endpoint: "http://localhost:8000"
+  organization: "qms-org"
+  application: "qms-app"
+  
+  # OAuth提供商配置
+  providers:
+    # 飞书集成
+    feishu:
+      name: "飞书"
+      type: "OAuth"
+      client_id: "${FEISHU_APP_ID}"
+      client_secret: "${FEISHU_APP_SECRET}"
+      auth_url: "https://open.feishu.cn/open-apis/authen/v1/index"
+      token_url: "https://open.feishu.cn/open-apis/authen/v1/access_token"
+      user_info_url: "https://open.feishu.cn/open-apis/authen/v1/user_info"
+      scopes: ["contact:user.base:readonly"]
+      
+    # GitHub集成
+    github:
+      name: "GitHub"
+      type: "OAuth"
+      client_id: "${GITHUB_CLIENT_ID}"
+      client_secret: "${GITHUB_CLIENT_SECRET}"
+      auth_url: "https://github.com/login/oauth/authorize"
+      token_url: "https://github.com/login/oauth/access_token"
+      user_info_url: "https://api.github.com/user"
+      scopes: ["user:email", "read:org"]
+      
+    # 企业微信集成
+    wechat_work:
+      name: "企业微信"
+      type: "OAuth"
+      client_id: "${WECHAT_CORP_ID}"
+      client_secret: "${WECHAT_CORP_SECRET}"
+      auth_url: "https://open.work.weixin.qq.com/wwopen/oauth2/authorize"
+      token_url: "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
+      user_info_url: "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
+      
+    # 钉钉集成
+    dingtalk:
+      name: "钉钉"
+      type: "OAuth"
+      client_id: "${DINGTALK_APP_KEY}"
+      client_secret: "${DINGTALK_APP_SECRET}"
+      auth_url: "https://oapi.dingtalk.com/connect/oauth2/sns_authorize"
+      token_url: "https://oapi.dingtalk.com/sns/gettoken"
+      user_info_url: "https://oapi.dingtalk.com/sns/getuserinfo"
+
+# 权限映射配置
+permission_mapping:
+  # 基于邮箱域名的权限映射
+  email_domain_rules:
+    "@company.com":
+      default_roles: ["USER"]
+      default_permissions: ["ai:conversation:view", "ai:datasource:view"]
+    "@admin.company.com":
+      default_roles: ["ADMIN"]
+      default_permissions: ["*"]
+      
+  # 基于GitHub组织的权限映射
+  github_org_rules:
+    "your-company":
+      default_roles: ["USER"]
+      admin_teams: ["admin", "devops"]
+      analyst_teams: ["data-team", "ai-team"]
+      
+  # 基于飞书部门的权限映射
+  feishu_department_rules:
+    "技术部":
+      default_roles: ["ADMIN"]
+      default_permissions: ["*"]
+    "数据部":
+      default_roles: ["ANALYST"]
+      default_permissions: ["ai:conversation:view", "ai:conversation:analyze", "ai:datasource:view", "ai:datasource:test"]
+    "业务部":
+      default_roles: ["USER"]
+      default_permissions: ["ai:conversation:view"]
+
+# 服务发现配置
+consul:
+  host: "consul"
+  port: 8500
+  datacenter: "dc1"
+  
+  # 服务注册配置
+  services:
+    qms-ai-service:
+      name: "qms-ai-service"
+      port: 3000
+      health_check:
+        http: "http://localhost:3000/health"
+        interval: "10s"
+        timeout: "3s"
+      tags: ["ai", "management", "v1"]
+      
+    qms-config-service:
+      name: "qms-config-service"
+      port: 3001
+      health_check:
+        http: "http://localhost:3001/health"
+        interval: "10s"
+        timeout: "3s"
+      tags: ["config", "management", "v1"]
+      
+    qms-user-service:
+      name: "qms-user-service"
+      port: 3002
+      health_check:
+        http: "http://localhost:3002/health"
+        interval: "10s"
+        timeout: "3s"
+      tags: ["user", "auth", "v1"]
+
+# 配置中心
+config_center:
+  type: "consul_kv"
+  prefix: "qms/config"
+  
+  # 配置项
+  configs:
+    # AI服务配置
+    ai_service:
+      model_config:
+        default_model: "gpt-3.5-turbo"
+        max_tokens: 2048
+        temperature: 0.7
+      rate_limit:
+        requests_per_minute: 60
+        requests_per_hour: 1000
+        
+    # 数据源配置
+    datasource:
+      connection_pool:
+        max_connections: 20
+        min_connections: 5
+        connection_timeout: 30000
+      health_check:
+        interval: 60000
+        timeout: 5000
+        
+    # 用户服务配置
+    user_service:
+      session:
+        timeout: 7200
+        refresh_threshold: 1800
+      password_policy:
+        min_length: 8
+        require_special_chars: true
+        require_numbers: true
+
+# 监控配置
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+    metrics_path: "/metrics"
+    
+  grafana:
+    enabled: true
+    port: 3000
+    admin_user: "admin"
+    admin_password: "admin123"
+    
+  jaeger:
+    enabled: true
+    port: 16686
+    agent_port: 6831
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "json"
+  
+  # 日志收集
+  fluentd:
+    enabled: true
+    host: "fluentd"
+    port: 24224
+    
+  # 日志存储
+  elasticsearch:
+    enabled: true
+    host: "elasticsearch"
+    port: 9200
+    index_prefix: "qms-logs"
+
+# 安全配置
+security:
+  # JWT配置
+  jwt:
+    secret: "${JWT_SECRET}"
+    expiration: 7200
+    refresh_expiration: 604800
+    
+  # CORS配置
+  cors:
+    allowed_origins: ["http://localhost:8090", "https://your-domain.com"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Authorization", "Content-Type"]
+    
+  # 限流配置
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+    burst_size: 200
+    
+  # 加密配置
+  encryption:
+    algorithm: "AES-256-GCM"
+    key: "${ENCRYPTION_KEY}"
+
+# 缓存配置
+cache:
+  redis:
+    host: "redis"
+    port: 6379
+    database: 0
+    password: ""
+    
+  # 缓存策略
+  strategies:
+    user_info:
+      ttl: 3600
+      max_size: 10000
+    config_data:
+      ttl: 1800
+      max_size: 5000
+    permission_cache:
+      ttl: 900
+      max_size: 20000
+
+# 消息队列配置
+message_queue:
+  type: "redis"
+  
+  # 队列定义
+  queues:
+    user_events:
+      name: "qms:user:events"
+      max_length: 10000
+    config_changes:
+      name: "qms:config:changes"
+      max_length: 5000
+    ai_analytics:
+      name: "qms:ai:analytics"
+      max_length: 20000

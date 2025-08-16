@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.objectrelation.infrastructure.repository.mapper.CfgObjectRelationMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.objectrelation.infrastructure.repository.po.CfgObjectRelationPo">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="tabName" column="tab_name" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="sourceModelCode" column="source_model_code" jdbcType="VARCHAR"/>
+            <result property="targetModelCode" column="target_model_code" jdbcType="VARCHAR"/>
+            <result property="behavior" column="behavior" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="VARCHAR"/>
+            <result property="isRequired" column="is_required" jdbcType="TINYINT"/>
+            <result property="maxNumber" column="max_number" jdbcType="INTEGER"/>
+            <result property="minNumber" column="min_number" jdbcType="INTEGER"/>
+            <result property="hideTab" column="hide_tab" jdbcType="TINYINT"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="floatBehavior" column="float_behavior" jdbcType="TINYINT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result property="enableFlag" column="enable_flag" jdbcType="BOOLEAN"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,name,
+        tab_name,description,source_model_code,
+        target_model_code,behavior,type,
+        is_required,max_number,min_number,
+        hide_tab,sort,float_behavior,
+        tenant_id,created_by,created_time,
+        updated_by,updated_time,delete_flag,
+        enable_flag
+    </sql>
+</mapper>

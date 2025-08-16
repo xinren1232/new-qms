@@ -1,0 +1,130 @@
+<script setup>
+import { Message, MessageBox } from 'element-ui'
+import TrTable from '@@/feature/TrTableX/src/Table.vue'
+import UserCell from '../components/user.vue'
+import { mergeApiNeedUserInfo } from '@/utils/index.js'
+
+const TABLE_HEIGHT = window.innerHeight - 110
+
+const router = useRouter()
+
+const tableRef = shallowRef()
+const tableData = shallowRef([])
+const filterForm = ref({
+  name: ''
+})
+
+// 计算条件数量
+const setConditionsNumbers = computed(() => {
+  return Object.values(filterForm.value).filter(Boolean).length
+})
+
+function onResetFilterForm() {
+  filterForm.value = { name: '' }
+}
+
+function onRefreshTableData() {
+  tableRef.value.query()
+}
+
+// 获取表格数据
+async function getTableData() {
+
+  return mergeApiNeedUserInfo(
+    Promise.resolve({
+      success: true,
+      data: {
+        total: 1,
+        data: [{ bid: 1, name: 1, updatedBy: '18646326', updatedTime: '2024-03-04 14:00:00' }]
+      }
+    }),
+
+    [ 'updatedBy' ]
+  )
+}
+
+// 点击新增或编辑按钮
+function onAddOrEditClick(row) {
+  router.push(`/file-manage/file-list/${row.bid || 'add'}`)
+}
+
+// 删除数据以后重新请求数据
+async function onDeleteData(row) {
+  await MessageBox.confirm(`确定删除【${row.name}】吗?`, '提示', { type: 'warning' })
+
+  Promise.resolve({ success: true })
+    .then(({ success }) => {
+      if (success) {
+        onRefreshTableData()
+        Message.success('删除成功')
+
+        return
+      }
+
+      Message.error('删除失败, 请稍后重试')
+    })
+}
+</script>
+
+<template>
+  <div class="">
+    <div class="tools-box">
+      <div class="btn-box" @click="onAddOrEditClick">
+        <tr-svg-icon icon-class="add-list" />
+        <span class="text">{{ $t('common.add') }}</span>
+      </div>
+
+      <el-divider direction="vertical" />
+
+      <el-popover @hide="onRefreshTableData()">
+        <template #reference>
+          <div slot="reference" class="btn-box">
+            <tr-svg-icon icon-class="t-filter" />
+            <span class="text"><span v-if="setConditionsNumbers>0" class="filter-rule-number">{{ setConditionsNumbers }}</span>{{ $t('common.filter') }}</span>
+          </div>
+        </template>
+
+        <div class="p-2">
+          <el-form label-position="right" label-width="100px">
+            <el-form-item label="文件名称">
+              <el-input v-model="filterForm.name" clearable />
+            </el-form-item>
+          </el-form>
+
+          <div class="text-right mt-4">
+            <el-button @click="onResetFilterForm(true)">重置</el-button>
+            <el-button type="primary" @click="onResetFilterForm()">查询</el-button>
+          </div>
+        </div>
+      </el-popover>
+    </div>
+
+    <tr-table
+      ref="tableRef"
+      v-model="tableData"
+      :http-request="getTableData"
+      :height="TABLE_HEIGHT"
+      :column-config="{resizable: true}"
+      show-overflow
+      show-pager
+      immediate
+    >
+      <vxe-table-column title="文件名称" field="name" />
+      <vxe-table-column title="文件类型" field="type" />
+      <vxe-table-column title="描述" field="description" />
+      <vxe-table-column title="大小" field="size" />
+      <vxe-table-column title="更新人" field="updatedBy" align="center">
+        <template #default="{ row }">
+          <user-cell :job-number="row.updatedBy" :avatar-size="22" />
+        </template>
+      </vxe-table-column>
+      <vxe-table-column title="更新时间" field="updatedTime" align="center" width="160" />
+      <vxe-table-column title="操作" align="center">
+        <template #default="{ row }">
+          <el-button type="text" @click="onAddOrEditClick(row)">编辑</el-button>
+          <el-button type="text" class="danger-color" @click="onDeleteData(row)">删除</el-button>
+        </template>
+      </vxe-table-column>
+    </tr-table>
+  </div>
+</template>

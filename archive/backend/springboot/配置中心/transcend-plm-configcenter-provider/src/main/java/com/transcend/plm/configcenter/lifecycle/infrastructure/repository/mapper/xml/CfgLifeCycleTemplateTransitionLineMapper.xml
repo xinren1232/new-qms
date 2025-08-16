@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.mapper.CfgLifeCycleTemplateTransitionLineMapper">
+
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.CfgLifeCycleTemplateTransitionLinePo">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="bid" column="bid" jdbcType="VARCHAR"/>
+            <result property="templateBid" column="template_bid" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="templateVersion" column="template_version" jdbcType="VARCHAR"/>
+            <result property="roleBid" column="role_bid" jdbcType="VARCHAR"/>
+            <result property="source" column="source" jdbcType="VARCHAR"/>
+            <result property="target" column="target" jdbcType="VARCHAR"/>
+            <result property="layout" column="layout" jdbcType="VARCHAR"/>
+            <result property="beforeMethod" column="before_method" jdbcType="VARCHAR"/>
+            <result property="afterMethod" column="after_method" jdbcType="VARCHAR"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
+            <result property="createdBy" column="created_by" jdbcType="VARCHAR"/>
+            <result property="createdTime" column="created_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="VARCHAR"/>
+            <result property="updatedTime" column="updated_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="BIT"/>
+            <result column="enable_flag" jdbcType="INTEGER" property="enableFlag" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,bid,template_bid,
+        description,template_version,role_bid,
+        source,target,layout,
+        before_method,after_method,tenant_id,
+        created_by,created_time,updated_by,
+        updated_time,delete_flag
+    </sql>
+</mapper>

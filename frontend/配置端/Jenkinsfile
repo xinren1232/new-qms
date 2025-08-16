@@ -1,0 +1,192 @@
+def buildConfigJson='''{
+                  "projectGitUrl":"http://10.250.112.151:18888/zhangjiaqiang/transcend-plm-web-configcenter.git",
+                  "gitCredentialsId":"f702bd84-0d8e-4cb2-8630-de7f94cdda61",
+				  "CI":{
+                    "branch":"dev",
+                	"runCodeScan":"true",
+                	"publish":"false",
+					"publishServers":[]
+                  },
+                  "SIT":{
+                    "remoteDirectory":"/soft/transcend/configCenter",
+                    "execCommand":"cd /home/trnuser/soft/transcend/configCenter && rm -rf ./dist && tar -zxvf dist.tar.gz",
+                    "branch":"sit",
+                   	"runCodeScan":"false",
+                   	"publish":"true",
+	            	"publishServers":[{"server":"ipm-ui-sit-10.250.101.36","userName":"trnuser","credentials":"AQAAABAAAAAQmqXGKGOf3l4ihZd+ABoT3IwExOG3YwOD1n3tCDQ4i+4="}]
+                  },
+                  "UAT":{
+                    "remoteDirectory":"/soft/transcend/configCenter",
+                    "execCommand":"cd /home/trnuser/soft/transcend/configCenter && rm -rf ./dist && tar -zxvf dist.tar.gz",
+                    "branch":"uat",
+                	"runCodeScan":"false",
+                	"publish":"true",
+					"publishServers":[{"server":"ipm-ui-uat-10.250.101.137","userName":"trnuser","credentials":"AQAAABAAAAAQfFRQT5KzwmNpcqKiaRH8IWFoekIisKANyVJ1WKwgysA="}]
+                  },
+                  "sonar":{
+                    "projectKey":"com.transsion.ipm:ipm-ui",
+                	"projectName":"ipm-ui",
+                	"login":"5b8d5250862e9b78c4ca117b29da90c6a7a922fa"
+                  },
+                  "notify":{
+                    "notifyType":"qywechat",
+                	"webhookUrl":"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=7955f3f2-25dc-4f34-b5e6-5a7a2a730bbd",
+                    "abortSend":true,
+                	"failSend":true,
+                	"unstableSend":true,
+                	"successSend":false,
+                	"mentionedId":""
+                  },
+                  "sshPublisher":{
+                    "sourceFiles":'dist.tar.gz',
+                    "removePrefix":"",
+                    "remoteDirectory":"/soft/ipm",
+                    "execCommand":"cd /home/trnuser/soft/ipm && rm -rf ./dist && tar -zxvf dist.tar.gz"
+                  }
+}'''
+pipeline {
+	agent any
+	parameters {
+	        choice(name: 'p_publish_env', choices: ['CI','DEV', 'SIT', 'UAT','PROD'], description: '编译环境')
+	        string(name:'p_build_branch', defaultValue: 'default', description: 'CI,DEV, SIT, UAT,PROD不需要修改')
+        }
+    options{
+            timeout(time: 10, unit: 'MINUTES')
+            timestamps ()
+    }
+	stages {
+	    stage('清理工作空间') {
+			steps {
+				cleanWs()
+			}
+		}
+	    stage("预处理参数") {
+			steps {
+			    script {
+							v_publish_env=params.p_publish_env
+							if(!v_publish_env) {
+								v_publish_env="CI"
+							}
+
+							buildConfig = readJSON text: buildConfigJson
+							buildEnv =buildConfig.CI
+							buildTarget="dev"
+							switch(v_publish_env) {
+								case 'DEV':
+									buildEnv=buildConfig.DEV
+									break;
+								case 'SIT':
+									buildEnv=buildConfig.SIT
+									buildTarget="sit"
+									break;
+								case 'UAT':
+									buildEnv=buildConfig.UAT
+									buildTarget="uat"
+									break;
+								case 'FEATURE':
+                                      buildEnv=buildConfig.FEATURE
+                                      buildTarget="feature"
+                                      break;
+								case 'PROD':
+									buildEnv=buildConfig.PROD
+									buildTarget="prod"
+									break;
+							}
+							if(params.p_build_branch && params.p_build_branch != 'default') {
+								buildEnv.branch=params.p_build_branch
+							}
+
+							echo "编译环境："+params.p_publish_env
+							echo "编译环境：buildTarget："+buildTarget
+							echo "编译分支："+buildEnv.branch
+		        }
+			}
+		}
+		stage('拉取代码') {
+			steps {
+			    script {
+						echo "代码地址："+buildConfig.projectGitUrl
+						echo "代码分支："+buildEnv.branch
+					}
+
+				checkout([$class: 'GitSCM',branches: [[name: "$buildEnv.branch"]],extensions: [],userRemoteConfigs: [[credentialsId: buildConfig.gitCredentialsId,url:buildConfig.projectGitUrl ]]])
+			}
+		}
+		stage('静态检查') {
+            when{
+                    equals expected: 'true', actual: buildEnv.runCodeScan
+            }
+
+            steps{
+                script{
+                    echo 'This is a sonar step'
+                    sonarqubeScannerHome = tool name: 'soanrqube scanner 4.4.0.2170', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                    echo sonarqubeScannerHome
+                }
+				timeout(3)
+				{
+				  nodejs('node-v14.21.3-linux-x64') {
+                    withSonarQubeEnv('sonar server') {
+					  sh "${sonarqubeScannerHome}/bin/sonar-scanner "+
+					  "-Dsonar.host.url=${SONAR_HOST_URL} " +
+					  "-Dsonar.sourceEncoding=UTF-8 " +
+					  "-Dsonar.language=javascript " +
+					  "-Dsonar.projectKey=$buildConfig.sonar.projectKey " +
+					  "-Dsonar.projectName=$buildConfig.sonar.projectName " +
+					  "-Dsonar.projectVersion=$BUILD_NUMBER " +
+					  "-Dsonar.sources=$WORKSPACE/src " +
+					  "-Dsonar.projectBaseDir=$WORKSPACE " +
+					  "-Dsonar.login=$buildConfig.sonar.login "
+					}
+				  }
+				}
+
+            }
+        }
+		stage('编译打包') {
+			steps {
+			    nodejs('node-v14.21.3-linux-x64') {
+					sh "node -v"
+					sh "npm -v"
+					sh "npx --yes -- pnpm@6  install"
+					sh "npm run build:$buildTarget"
+					sh "tar -zcvf dist.tar.gz dist"
+				}
+			}
+        }
+		stage("发布服务器"){
+            when{
+                   equals expected: 'true', actual: buildEnv.publish
+            }
+            steps{
+               script{
+					for(publisServer in buildEnv.publishServers){
+					    stage("开始发布")
+						{
+						    script{
+								echo '发布服务器：'+publisServer.server
+						    }
+							sshPublisher(publishers: [sshPublisherDesc(configName: publisServer.server,
+							    sshCredentials: [encryptedPassphrase: "{$publisServer.credentials}", key: '', keyPath: '',
+							    username: publisServer.userName],
+							    transfers: [sshTransfer(cleanRemote: false, excludes: '',
+								  execCommand: buildEnv.execCommand,
+								  execTimeout: 120000, flatten: false, makeEmptyDirs: false,
+								  noDefaultExcludes: false, patternSeparator: '[, ]+',
+								  remoteDirectory: buildEnv.remoteDirectory,
+								  remoteDirectorySDF: false,
+								  removePrefix: buildConfig.sshPublisher.removePrefix,
+								  sourceFiles: buildConfig.sshPublisher.sourceFiles)],
+						        usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+						}
+					}
+                }
+            }
+        }
+    }
+	post {
+            always {
+                jenkinsNotify abortSend: buildConfig.notify.abortSend,unstableSend: buildConfig.notify.unstableSend, failSend: buildConfig.notify.failSend,successSend: buildConfig.notify.successSend, mentionedId: '', notifyType: buildConfig.notify.notifyType,  webhookUrl: buildConfig.notify.webhookUrl
+            }
+        }
+}

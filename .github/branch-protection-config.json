@@ -1,0 +1,33 @@
+{
+  "protection": {
+    "required_status_checks": {
+      "strict": true,
+      "contexts": [
+        "🔍 代码质量检查",
+        "🏗️ 构建检查 (frontend-app)",
+        "🏗️ 构建检查 (frontend-config)", 
+        "🏗️ 构建检查 (backend)",
+        "🔒 安全扫描",
+        "📊 代码质量分析",
+        "🔒 依赖安全检查"
+      ]
+    },
+    "enforce_admins": false,
+    "required_pull_request_reviews": {
+      "required_approving_review_count": 2,
+      "dismiss_stale_reviews": true,
+      "require_code_owner_reviews": true,
+      "require_last_push_approval": true
+    },
+    "restrictions": {
+      "users": [],
+      "teams": ["qms-ai-maintainers"],
+      "apps": []
+    },
+    "required_linear_history": true,
+    "allow_force_pushes": false,
+    "allow_deletions": false,
+    "block_creations": false,
+    "required_conversation_resolution": true
+  }
+}

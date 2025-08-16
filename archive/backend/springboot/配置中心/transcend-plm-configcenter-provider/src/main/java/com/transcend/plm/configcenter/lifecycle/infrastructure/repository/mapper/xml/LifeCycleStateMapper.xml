@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.mapper.LifeCycleStateMapper">
+    <resultMap id="BaseResultMap" type="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.LifeCycleStatePo">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="bid" jdbcType="VARCHAR" property="bid" />
+        <result column="code" jdbcType="VARCHAR" property="code" />
+        <result column="color" jdbcType="VARCHAR" property="color" />
+        <result column="name" jdbcType="VARCHAR" property="name" />
+        <result column="group_code" jdbcType="VARCHAR" property="groupCode" />
+        <result column="description" jdbcType="VARCHAR" property="description" />
+        <result column="enable_flag" jdbcType="VARCHAR" property="enableFlag" />
+        <result column="binding_flag" jdbcType="BIT" property="bindingFlag" />
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId" />
+        <result column="created_by" jdbcType="VARCHAR" property="createdBy" />
+        <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+        <result column="updated_by" jdbcType="VARCHAR" property="updatedBy" />
+        <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+        <result column="delete_flag" jdbcType="INTEGER" property="deleteFlag" />
+        <result column="enable_flag" jdbcType="INTEGER" property="enableFlag" />
+    </resultMap>
+    <sql id="Base_Column_List">
+       id,bid, code, `color`, `name`, group_code,description,enable_flag,binding_flag,tenant_id,created_by,created_time,updated_by,updated_time,delete_flag
+    </sql>
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from cfg_life_cycle_state
+        where id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from cfg_life_cycle_state
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+
+    <insert id="bulkInsert" keyColumn="id" keyProperty="id" useGeneratedKeys="true" parameterType="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.LifeCycleStatePo">
+        insert into cfg_life_cycle_state
+        (
+        bid,code,
+        `name`,group_code, `description`, `enable_flag`,
+        binding_flag, tenant_id,
+        created_time, updated_time, created_by,
+        updated_by,delete_flag)
+        values
+        <foreach collection="records" item="item" separator=",">
+            (
+            #{item.bid,jdbcType=VARCHAR}, #{item.code,jdbcType=VARCHAR},
+            #{item.name,jdbcType=VARCHAR},#{item.groupCode,jdbcType=VARCHAR}, #{item.description,jdbcType=VARCHAR}, #{item.enableFlag,jdbcType=BIGINT},
+            #{item.bindingFlag,jdbcType=BIT}, #{item.tenantId,jdbcType=INTEGER},
+            #{item.createdTime,jdbcType=TIMESTAMP}, #{item.updatedTime,jdbcType=TIMESTAMP}, #{item.createdBy,jdbcType=VARCHAR},
+            #{item.updatedBy,jdbcType=VARCHAR}, #{item.deleteFlag,jdbcType=INTEGER}
+            )
+        </foreach>
+    </insert>
+
+    <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.LifeCycleStatePo" useGeneratedKeys="true">
+    insert into cfg_life_cycle_state (bid,code,
+      `name`,group_code, `description`, `enable_flag`,
+      binding_flag, tenant_id,
+      created_time, updated_time, created_by,
+      updated_by,delete_flag)
+    values (#{bid,jdbcType=VARCHAR}, #{code,jdbcType=VARCHAR},
+      #{name,jdbcType=VARCHAR},#{groupCode,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR}, #{enableFlag,jdbcType=BIGINT},
+      #{bindingFlag,jdbcType=BIT}, #{tenantId,jdbcType=INTEGER},
+      #{createdTime,jdbcType=TIMESTAMP}, #{updatedTime,jdbcType=TIMESTAMP}, #{createdBy,jdbcType=VARCHAR},
+      #{updatedBy,jdbcType=VARCHAR}, #{deleteFlag,jdbcType=INTEGER})
+  </insert>
+    <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.LifeCycleStatePo" useGeneratedKeys="true">
+        insert into cfg_life_cycle_state
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bid != null">
+                bid,
+            </if>
+            <if test="code != null">
+                code,
+            </if>
+            <if test="name != null">
+                `name`,
+            </if>
+            <if test="groupCode != null">
+                `group_code`,
+            </if>
+            <if test="description != null">
+                `description`,
+            </if>
+            <if test="enableFlag != null">
+                `enable_flag`,
+            </if>
+            <if test="bindingFlag != null">
+                binding_flag,
+            </if>
+            <if test="tenantId != null">
+                tenant_id,
+            </if>
+            <if test="createdTime != null">
+                created_time,
+            </if>
+            <if test="updatedTime != null">
+                updated_time,
+            </if>
+            <if test="createdBy != null">
+                created_by,
+            </if>
+            <if test="updatedBy != null">
+                updated_by,
+            </if>
+            <if test="deleteFlag != null">
+                delete_flag,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bid != null">
+                #{bid,jdbcType=VARCHAR},
+            </if>
+            <if test="code != null">
+                #{code,jdbcType=VARCHAR},
+            </if>
+            <if test="name != null">
+                #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="groupCode != null">
+                #{groupCode,jdbcType=VARCHAR},
+            </if>
+            <if test="description != null">
+                #{description,jdbcType=VARCHAR},
+            </if>
+            <if test="enableFlag != null">
+                #{enableFlag,jdbcType=BIGINT},
+            </if>
+            <if test="bindingFlag != null">
+                #{bindingFlag,jdbcType=BIT},
+            </if>
+            <if test="tenantId != null">
+                #{tenantId,jdbcType=INTEGER},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updatedTime != null">
+                #{updatedTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="createdBy != null">
+                #{createdBy,jdbcType=VARCHAR},
+            </if>
+            <if test="updatedBy != null">
+                #{updatedBy,jdbcType=VARCHAR},
+            </if>
+            <if test="deleteFlag != null">
+                #{deleteFlag,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+    <update id="updateByPrimaryKeySelective" parameterType="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.LifeCycleStatePo">
+        update cfg_life_cycle_state
+        <set>
+            <if test="bid != null">
+               bid = #{bid,jdbcType=VARCHAR},
+            </if>
+            <if test="code != null">
+                code = #{code,jdbcType=VARCHAR},
+            </if>
+            <if test="name != null">
+                `name` = #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="groupCode != null">
+                `group_code` = #{groupCode,jdbcType=VARCHAR},
+            </if>
+            <if test="description != null">
+                `description` = #{description,jdbcType=VARCHAR},
+            </if>
+            <if test="enableFlag != null">
+                `enable_flag` = #{enableFlag,jdbcType=BIGINT},
+            </if>
+            <if test="bindingFlag != null">
+                binding_flag = #{bindingFlag,jdbcType=BIT},
+            </if>
+            <if test="tenantId != null">
+                tenant_id = #{tenantId,jdbcType=INTEGER},
+            </if>
+            <if test="createdTime != null">
+                created_time = #{createdTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updatedTime != null">
+                updated_time = #{updatedTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="createdBy != null">
+                created_by = #{createdBy,jdbcType=VARCHAR},
+            </if>
+            <if test="updatedBy != null">
+                updated_by = #{updatedBy,jdbcType=VARCHAR},
+            </if>
+            <if test="deleteFlag != null">
+                delete_flag = #{deleteFlag,jdbcType=INTEGER},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+    <update id="updateByPrimaryKey" parameterType="com.transcend.plm.configcenter.lifecycle.infrastructure.repository.po.LifeCycleStatePo">
+    update cfg_life_cycle_state
+    set bid = #{bid,jdbcType=VARCHAR},
+                code = #{code,jdbcType=VARCHAR},
+                `name` = #{name,jdbcType=VARCHAR},
+                `group_code` = #{groupCode,jdbcType=VARCHAR},
+                `description` = #{description,jdbcType=VARCHAR},
+                `enable_flag` = #{enableFlag,jdbcType=BIGINT},
+                binding_flag = #{bindingFlag,jdbcType=BIT},
+                tenant_id = #{tenantId,jdbcType=INTEGER},
+                created_time = #{createdTime,jdbcType=TIMESTAMP},
+                updated_time = #{updatedTime,jdbcType=TIMESTAMP},
+                created_by = #{createdBy,jdbcType=VARCHAR},
+                updated_by = #{updatedBy,jdbcType=VARCHAR},
+                delete_flag = #{deleteFlag,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+
+    <select id="list" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_life_cycle_state
+        <where>
+            <if test="lifeCycleStatusListQo.enableFlag != null and lifeCycleStatusListQo.enableFlag != ''">
+                AND enable_flag=#{lifeCycleStatusListQo.enableFlag,jdbcType=BIGINT}
+            </if>
+            <if test="lifeCycleStatusListQo.name != null and lifeCycleStatusListQo.name != ''">
+                AND name like  concat(concat('%',#{lifeCycleStatusListQo.name}),'%')
+            </if>
+            <if test="lifeCycleStatusListQo.groupCode != null and lifeCycleStatusListQo.groupCode != ''">
+                AND group_code=#{lifeCycleStatusListQo.groupCode,jdbcType=VARCHAR}
+            </if>
+            <if test="lifeCycleStatusListQo.startDate != null ">
+                AND updated_time >= #{lifeCycleStatusListQo.startDate,jdbcType=TIMESTAMP}
+            </if>
+            <if test="lifeCycleStatusListQo.endDate != null ">
+                <![CDATA[
+                AND updated_time <= #{lifeCycleStatusListQo.endDate,jdbcType=TIMESTAMP}
+                ]]>
+            </if>
+        </where>
+        order by updated_time desc,id asc
+    </select>
+
+    <select id="queryByCodes" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_life_cycle_state
+        where code IN
+        <foreach collection="list" item="code" open="(" close=")" separator=",">
+            #{code,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <select id="allList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cfg_life_cycle_state where enable_flag in (1,2)
+    </select>
+</mapper>

@@ -1,0 +1,16 @@
+{
+  "environment": "development",
+  "log_level": "info",
+  "database": {
+    "type": "sqlite",
+    "path": "./database/chat_history.db"
+  },
+  "cache": {
+    "enabled": false,
+    "ttl": 3600
+  },
+  "security": {
+    "cors_enabled": true,
+    "rate_limit_enabled": true
+  }
+}
