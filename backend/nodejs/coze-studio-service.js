@@ -16,9 +16,9 @@ const LangChainMemoryManager = require('./services/langchain-memory');
 const PluginEcosystemManager = require('./services/plugin-ecosystem');
 const axios = require('axios');
 
-const fs = require('fs');
-const path = require('path');
-let XLSX = null; // 延迟加载，避免启动时开销
+// const fs = require('fs'); // 暂未使用
+// const path = require('path'); // 暂未使用
+// let XLSX = null; // 延迟加载，避免启动时开销 // 暂未使用
 
 const app = express();
 const PORT = process.env.COZE_STUDIO_PORT || 3005;
@@ -42,6 +42,9 @@ const smartModelSelector = new SmartModelSelector();
 
 // 初始化CrewAI协调器
 const crewAICoordinator = new CrewAICoordinator(callAIModel, dbAdapter, smartModelSelector);
+// 简易内存执行存储（演示用途；生产应使用DB）
+const executionStore = new Map();
+
 
 // 初始化LangChain Memory管理器
 const langChainMemory = new LangChainMemoryManager(callAIModel, dbAdapter, smartModelSelector);
@@ -611,7 +614,6 @@ app.post('/api/agents/:id/test', authenticateUser, async (req, res) => {
     }
 
     const agentConfig = JSON.parse(agent.config || '{}');
-    let enhancedMessage = message;
     let memoryContext = null;
 
     // 如果启用记忆系统，检索相关记忆
@@ -839,8 +841,27 @@ app.post('/api/agents/:id/chat', authenticateUser, async (req, res) => {
       now
     ]);
 
-    // 构建AI请求
-    const aiResponse = await callAIModel(agentConfig, context.messages, message);
+    // RAG（轻量）
+    const { use_rag = true, kb_scope = 'user', top_k = 3 } = req.body || {};
+    let ragContext = '';
+    let ragSources = [];
+    if (use_rag) {
+      const scopeKey = kb_scope === 'session' && conversation_id ? `${req.user.id}:${conversation_id}` : `${req.user.id}`;
+      const chunks = await kbGetChunks(cacheService, scopeKey);
+      if (chunks && chunks.length) {
+        const scored = chunks.map(ch => ({ ch, score: scoreByKeywordOverlap(message, ch.text) }))
+          .sort((a,b)=>b.score-a.score).slice(0, Math.max(1, Math.min(10, top_k)));
+        ragSources = scored.map(s => ({ title: s.ch.title, idx: s.ch.idx, docId: s.ch.docId, score: s.score }));
+        ragContext = scored.map(s => s.ch.text).join('\n---\n');
+      }
+    }
+
+    // 构建AI请求（将RAG上下文作为system或前置消息）
+    const messagesForAI = [...context.messages];
+    if (ragContext) {
+      messagesForAI.unshift({ role: 'system', content: `你是质量管理助手。以下是与问题相关的资料片段（可能包含来自用户知识库的内容），请优先基于这些资料作答，并在无法确定时说明不确定性：\n${ragContext}` });
+    }
+    const aiResponse = await callAIModel(agentConfig, messagesForAI, message);
 
     // 保存AI回复
     const assistantMessageId = uuidv4();
@@ -856,6 +877,7 @@ app.post('/api/agents/:id/chat', authenticateUser, async (req, res) => {
       JSON.stringify({
         model: agentConfig.model,
         usage: aiResponse.usage,
+        rag: { enabled: !!use_rag, sources: ragSources },
         timestamp: now
       }),
       now
@@ -1474,6 +1496,152 @@ app.get('/api/workflows/:id', authenticateUser, async (req, res) => {
 });
 
 /**
+ * 文档解析场景工作流执行 (必须在通用工作流路由之前定义)
+ * 路径：/api/workflows/document-parsing/execute
+ */
+app.post('/api/workflows/document-parsing/execute', authenticateUserOrAnonymous, async (req, res) => {
+    try {
+      const startAll = Date.now();
+      const { input = {}, options = {} } = req.body || {};
+      const { file = {}, query = '' } = input;
+      const { name = '', type = '', base64 = '', text = '' } = file || {};
+      const { summarize = true, stats = true, ingest_kb = false, kb_id = null } = options || {};
+
+      // 生成执行ID
+      const executionId = `exec_${Date.now()}`;
+
+      // 立即返回执行ID，表示开始处理
+      res.json({
+        success: true,
+        data: {
+          execution_id: executionId,
+          status: 'running'
+        },
+        message: '文档解析开始执行'
+      });
+
+      const steps = [];
+      const recordStep = (title, status, data = {}, started_at, completed_at) => {
+        steps.push({ title, status, data, started_at, completed_at, duration_ms: (completed_at - started_at) });
+      };
+
+      // 0) 确保核心插件可用
+      try { await ensureCorePluginsInstalled(); } catch(e) { /* 忽略 */ }
+
+      // 文档插件选择函数（本地定义）
+      const pickDocPluginByType = (fileType = 'text') => {
+        const t = (fileType || '').toLowerCase();
+        if (t.includes('pdf')) return 'pdf_parser';
+        if (t.includes('csv')) return 'csv_parser';
+        if (t.includes('xlsx') || t.includes('excel') || t === 'xls') return 'xlsx_parser';
+        if (t.includes('docx') || t.includes('doc')) return 'docx_parser';
+        if (t.includes('json')) return 'json_parser';
+        if (t.includes('xml')) return 'xml_parser';
+        return null;
+      };
+
+      // 1) 类型识别与插件选择
+      let t0 = Date.now();
+      const inferredType = (type || (name.split('.').pop() || '')).toLowerCase();
+      const pluginId = pickDocPluginByType(inferredType) || (inferredType.match(/png|jpg|jpeg|bmp|gif|webp/) ? 'ocr_reader' : null);
+      recordStep('detect_type', 'completed', { inferredType, pluginId }, t0, Date.now());
+
+      // 2) 文档解析
+      t0 = Date.now();
+      let parseResult = null;
+      if (pluginId) {
+        const pluginInput = {};
+        if (base64) pluginInput.base64 = base64;
+        if (text) pluginInput.text = text;
+        const exec = await pluginEcosystem.executePlugin(pluginId, pluginInput, {});
+
+        // 从插件响应中提取实际结果
+        if (exec && exec.result) {
+          parseResult = exec.result;
+        } else if (exec) {
+          parseResult = exec;
+        } else {
+          parseResult = null;
+        }
+      } else {
+        // 纯文本
+        parseResult = { success: true, type: 'text', text: text || Buffer.from(base64 || '', 'base64').toString('utf-8') };
+      }
+      recordStep('parse_document', 'completed', { type: parseResult?.type, size: (parseResult?.text||'').length }, t0, Date.now());
+
+      // 3) 归一化结构（表格/文本）
+      t0 = Date.now();
+      const normalized = { pluginId: pluginId || 'raw_text', res: {}, basicSummary: null };
+      const pr = parseResult || {};
+      if (pr.text && typeof pr.text === 'string') {
+        normalized.res = { type: pr.type || 'text', text: pr.text, html: pr.html || null, metadata: pr.metadata || {} };
+      } else if (pr.preview || pr.rows || pr.columns) {
+        const rows = Array.isArray(pr.preview) ? pr.preview : (Array.isArray(pr.rows) ? pr.rows : []);
+        normalized.res = { type: pr.type || 'table', preview: rows.slice(0, 100), rows: rows, columns: pr.columns || pr.data || {} };
+      } else if (pr.data && (Array.isArray(pr.data.preview) || pr.data.columns)) {
+        normalized.res = { type: pr.type || 'table', preview: pr.data.preview || [], rows: pr.data.rows || [], columns: pr.data.columns || {} };
+      } else {
+        normalized.res = { type: 'unknown', raw: pr };
+      }
+      recordStep('normalize', 'completed', { res_type: normalized.res.type }, t0, Date.now());
+
+      // 4) 分支分析：文本摘要或统计分析
+      t0 = Date.now();
+
+      let analysis = null;
+      if (normalized.res.type === 'text' && summarize) {
+        const exec = await pluginEcosystem.executePlugin('text_summarizer', { text: normalized.res.text }, { max_sentences: 5 });
+        analysis = exec || null;
+        normalized.basicSummary = { kind: 'text', summary: (analysis?.summary || ''), sentences: analysis?.sentences || [] };
+      } else if (normalized.res.type !== 'text' && stats) {
+        const ds = Array.isArray(normalized.res.preview) ? normalized.res.preview : [];
+        const exec = await pluginEcosystem.executePlugin('statistical_analyzer', { dataset: ds }, {});
+        analysis = exec || null;
+        normalized.basicSummary = { kind: 'table', stats: analysis?.stats || {}, notes: analysis?.recommendations || [] };
+      }
+      recordStep('analyze', 'completed', { kind: normalized.basicSummary?.kind || 'none' }, t0, Date.now());
+
+      // 5) 可选：入库KB
+      t0 = Date.now();
+      let kbResult = null;
+      if (ingest_kb) {
+        try {
+          const content = normalized.res.type === 'text' ? (normalized.res.text || '') : JSON.stringify((normalized.res.rows || normalized.res.preview || [])).slice(0, 50000);
+          kbResult = { success: true, mocked: true, kb_id: kb_id || 'kb_demo', length: content.length };
+          recordStep('ingest_kb', 'completed', { kb_id: kbResult.kb_id }, t0, Date.now());
+        } catch (e) {
+          recordStep('ingest_kb', 'failed', { error: e.message }, t0, Date.now());
+        }
+      }
+
+      const duration = Date.now() - startAll;
+
+      // 存储执行信息（供前端追踪可视化）
+      executionStore.set(executionId, {
+        id: executionId,
+        steps,
+        parsed: normalized,
+        status: 'completed',
+        duration
+      });
+
+      // 异步处理完成，不需要再次响应（已在开始时响应）
+      console.log(`✅ 文档解析工作流执行完成: ${executionId}, 耗时: ${duration}ms`);
+    } catch (error) {
+      console.error('文档解析工作流执行失败:', error);
+
+      // 更新执行状态为失败
+      executionStore.set(executionId, {
+        id: executionId,
+        status: 'failed',
+        error: error.message,
+        steps,
+        duration: Date.now() - startAll
+      });
+    }
+  });
+
+/**
  * 执行工作流
  */
 app.post('/api/workflows/:id/execute', authenticateUser, async (req, res) => {
@@ -1717,6 +1885,30 @@ async function executeWorkflowNodes(executionId, nodes, edges, inputData) {
 
         case 'transform':
           result = await executeTransformNode(node, context);
+          break;
+
+        case 'document_input':
+          result = await executeDocumentInputNode(node, context);
+          break;
+
+        case 'format_detection':
+          result = await executeFormatDetectionNode(node, context);
+          break;
+
+        case 'parsing_router':
+          result = await executeParsingRouterNode(node, context);
+          break;
+
+        case 'document_parser':
+          result = await executeDocumentParserNode(node, context);
+          break;
+
+        case 'ai_analysis':
+          result = await executeAiAnalysisNode(node, context);
+          break;
+
+        case 'result_formatter':
+          result = await executeResultFormatterNode(node, context);
           break;
 
         case 'output':
@@ -2098,6 +2290,254 @@ app.post('/api/knowledge/:id/search', authenticateUser, async (req, res) => {
         success: false,
         error: '检索查询不能为空'
       });
+
+/**
+ * 轻量知识入库（M1）：解析→简易切块→存入Redis（按user/session命名空间）
+ * 参考开源实践：先用keyword overlap作为最小可用检索；后续可替换为向量索引
+ */
+function simpleChunkText(text, maxLen = 1000) {
+  const chunks = [];
+  if (!text || typeof text !== 'string') return chunks;
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(start + maxLen, text.length);
+    // 优先在句子边界裁剪
+    const slice = text.slice(start, end);
+    const lastPunct = Math.max(slice.lastIndexOf('。'), slice.lastIndexOf('.'));
+    if (lastPunct > 200 && start + lastPunct + 1 < text.length) {
+      end = start + lastPunct + 1;
+    }
+    chunks.push(text.slice(start, end));
+    start = end;
+  }
+  return chunks;
+}
+
+function tokenizeZhEn(str) {
+  if (!str) return [];
+  // 简化分词：去除标点，按空白和中英文混合切分
+  const cleaned = String(str).toLowerCase().replace(/[^a-z0-9 ---\u4e00-\u9fa5\s]/g, ' ');
+  return cleaned.split(/\s+/).filter(Boolean);
+}
+
+function scoreByKeywordOverlap(query, chunk) {
+  const qTokens = tokenizeZhEn(query);
+  const cTokens = tokenizeZhEn(chunk);
+  if (!qTokens.length || !cTokens.length) return 0;
+  const setC = new Map();
+  for (const t of cTokens) setC.set(t, (setC.get(t) || 0) + 1);
+  let score = 0;
+  for (const t of qTokens) {
+    if (setC.has(t)) score += 1 + Math.log(1 + setC.get(t));
+  }
+  // 归一化到(0,1)
+  return Math.min(1, score / Math.max(5, qTokens.length));
+}
+
+async function kbGetChunks(cacheService, scopeKey) {
+  try {
+    return (await cacheService.get('kb', `chunks:${scopeKey}`)) || [];
+  } catch (e) {
+    console.warn('读取KB失败:', e.message);
+    return [];
+  }
+}
+
+async function kbSetChunks(cacheService, scopeKey, chunks) {
+  try {
+    await cacheService.set('kb', `chunks:${scopeKey}`, chunks);
+    return true;
+  } catch (e) {
+    console.warn('写入KB失败:', e.message);
+    return false;
+  }
+}
+
+// 动态选择文档解析插件
+function pickDocPluginByType(fileType = 'text') {
+  const t = (fileType || '').toLowerCase();
+  if (t.includes('pdf')) return 'pdf_parser';
+  if (t.includes('csv')) return 'csv_parser';
+  if (t.includes('xlsx') || t.includes('excel') || t === 'xls') return 'xlsx_parser';
+  if (t.includes('docx') || t.includes('doc')) return 'docx_parser';
+  if (t.includes('json')) return 'json_parser';
+  if (t.includes('xml')) return 'xml_parser';
+  if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('bmp')) return 'ocr_reader';
+  return null; // 纯文本
+}
+
+/**
+ * 执行文档输入节点
+ */
+async function executeDocumentInputNode(node, context) {
+  const { config } = node;
+  const inputData = context.inputData || {};
+
+  let documentData = {
+    type: 'unknown',
+    content: null,
+    metadata: {}
+  };
+
+  // 处理文件输入
+  if (inputData.file) {
+    const file = inputData.file;
+    documentData = {
+      type: 'file',
+      content: {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        base64: file.base64,
+        lastModified: file.lastModified
+      },
+      metadata: {
+        source: 'file_upload',
+        originalName: file.name,
+        fileSize: file.size,
+        mimeType: file.type
+      }
+    };
+  }
+  // 处理URL输入
+  else if (inputData.url) {
+    documentData = {
+      type: 'url',
+      content: {
+        url: inputData.url
+      },
+      metadata: {
+        source: 'url_input',
+        url: inputData.url
+      }
+    };
+  }
+  // 处理文本输入
+  else if (inputData.text) {
+    documentData = {
+      type: 'text',
+      content: {
+        text: inputData.text
+      },
+      metadata: {
+        source: 'text_input',
+        length: inputData.text.length
+      }
+    };
+  }
+
+  return {
+    success: true,
+    documentData,
+    nextNode: 'format_detection'
+  };
+}
+
+/**
+ * 执行格式检测节点
+ */
+async function executeFormatDetectionNode(node, context) {
+  const { documentData } = context;
+  const { config } = node;
+
+  let detectedFormat = 'text';
+  let confidence = 0.5;
+  let parserPlugin = null;
+
+  if (documentData.type === 'file') {
+    const file = documentData.content;
+    const fileName = file.name || '';
+    const mimeType = file.type || '';
+
+    // 基于文件扩展名检测
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (ext) {
+      const formatMap = {
+        'pdf': { format: 'pdf', confidence: 0.9 },
+        'docx': { format: 'docx', confidence: 0.9 },
+        'doc': { format: 'docx', confidence: 0.8 },
+        'xlsx': { format: 'xlsx', confidence: 0.9 },
+        'xls': { format: 'xlsx', confidence: 0.8 },
+        'csv': { format: 'csv', confidence: 0.9 },
+        'json': { format: 'json', confidence: 0.9 },
+        'xml': { format: 'xml', confidence: 0.9 },
+        'txt': { format: 'text', confidence: 0.8 },
+        'png': { format: 'image', confidence: 0.9 },
+        'jpg': { format: 'image', confidence: 0.9 },
+        'jpeg': { format: 'image', confidence: 0.9 }
+      };
+
+      if (formatMap[ext]) {
+        detectedFormat = formatMap[ext].format;
+        confidence = formatMap[ext].confidence;
+      }
+    }
+
+    // 基于MIME类型进一步确认
+    if (mimeType) {
+      if (mimeType.includes('pdf')) {
+        detectedFormat = 'pdf';
+        confidence = Math.max(confidence, 0.95);
+      } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+        detectedFormat = 'xlsx';
+        confidence = Math.max(confidence, 0.9);
+      } else if (mimeType.includes('document') || mimeType.includes('word')) {
+        detectedFormat = 'docx';
+        confidence = Math.max(confidence, 0.9);
+      } else if (mimeType.includes('image')) {
+        detectedFormat = 'image';
+        confidence = Math.max(confidence, 0.9);
+      }
+    }
+  } else if (documentData.type === 'url') {
+    // URL格式检测逻辑
+    const url = documentData.content.url;
+    const urlExt = url.split('.').pop()?.toLowerCase();
+    if (urlExt && ['pdf', 'docx', 'xlsx'].includes(urlExt)) {
+      detectedFormat = urlExt;
+      confidence = 0.7;
+    }
+  }
+
+  // 选择对应的解析器插件
+  parserPlugin = pickDocPluginByType(detectedFormat);
+
+  return {
+    success: true,
+    detectedFormat,
+    confidence,
+    parserPlugin,
+    formatMetadata: {
+      detectionMethod: documentData.type === 'file' ? 'file_analysis' : 'url_analysis',
+      confidence,
+      supportedParsers: config.supportedFormats || {}
+    },
+    nextNode: 'parsing_router'
+  };
+}
+
+/**
+ * 执行解析路由节点
+ */
+async function executeParsingRouterNode(node, context) {
+  const { detectedFormat, parserPlugin } = context;
+  const { config } = node;
+
+  let targetNode = config.fallbackRoute || 'text_parsing';
+
+  // 根据检测到的格式选择目标节点
+  if (config.routingRules && config.routingRules[detectedFormat]) {
+    targetNode = config.routingRules[detectedFormat];
+  }
+
+  return {
+    success: true,
+    routedTo: targetNode,
+    routingReason: `Format detected as ${detectedFormat}, using parser ${parserPlugin}`,
+    nextNode: targetNode
+  };
+}
+
     }
 
     // 模拟向量检索结果
@@ -2149,6 +2589,428 @@ app.post('/api/knowledge/:id/search', authenticateUser, async (req, res) => {
       error: '知识库检索失败',
       message: error.message
     });
+  }
+});
+
+
+/**
+ * 新增：知识入库（轻量）
+ * 入参：{ fileName, fileType, base64?, text?, saveScope: 'user'|'session', conversation_id? }
+ */
+app.post('/api/knowledge/ingest', authenticateUser, async (req, res) => {
+  try {
+    const { fileName = '未命名', fileType = 'text', base64, text, saveScope = 'user', conversation_id } = req.body || {};
+
+    if (!text && !base64) {
+      return res.status(400).json({ success: false, message: '请提供文本(text)或文件(base64)' });
+    }
+
+    // 调用文档解析插件（如可用），否则使用纯文本
+    let plainText = '';
+    const pluginId = pickDocPluginByType(fileType);
+    if (pluginId) {
+      try {
+        const input = {};
+        if (base64) input.base64 = base64;
+        if (text) input.text = text;
+        const exec = await pluginEcosystem.executePlugin(pluginId, input, {});
+        if (exec && exec.success) {
+          if (exec.text) plainText = exec.text;
+          else if (exec.preview) plainText = JSON.stringify(exec.preview).slice(0, 20000);
+          else if (exec.data) plainText = (typeof exec.data === 'string') ? exec.data : JSON.stringify(exec.data).slice(0, 20000);
+        }
+      } catch (e) {
+        console.warn('文档解析失败，回退纯文本:', e.message);
+      }
+    }
+    if (!plainText) plainText = text || '';
+
+    const chunks = simpleChunkText(plainText, 1200).map((c, idx) => ({ docId: `doc_${Date.now()}`, idx, title: fileName, text: c }));
+
+    // 写入Redis（按user或session命名空间）
+    const scopeKey = saveScope === 'session' && conversation_id ? `${req.user.id}:${conversation_id}` : `${req.user.id}`;
+    const existed = await kbGetChunks(cacheService, scopeKey);
+    const next = [...(existed || []), ...chunks];
+    await kbSetChunks(cacheService, scopeKey, next);
+
+    res.json({ success: true, data: { fileName, fileType, scopeKey, added: chunks.length, total: next.length, sample: chunks.slice(0, 2) } });
+  } catch (error) {
+    console.error('知识入库失败:', error);
+    res.status(500).json({ success: false, message: '知识入库失败', error: error.message });
+  }
+});
+
+/**
+ * 新增：知识检索（轻量关键词重叠）
+ * 入参：{ query, top_k=3, kb_scope='user'|'session', conversation_id? }
+ */
+app.post('/api/knowledge/search', authenticateUser, async (req, res) => {
+  try {
+    const { query, top_k = 3, kb_scope = 'user', conversation_id } = req.body || {};
+    if (!query) return res.status(400).json({ success: false, message: 'query 不能为空' });
+
+/** Traces: 执行过程记录（右侧过程栏数据源） **/
+async function appendTrace(cacheService, userId, conversationId, trace) {
+  try {
+    const key = `${userId}:${conversationId}`;
+    const list = (await cacheService.get('traces', key)) || [];
+    list.push(trace);
+    // 仅保留最近 100 条
+    await cacheService.set('traces', key, list.slice(-100));
+  } catch (e) {
+    console.warn('写入Trace失败:', e.message);
+  }
+}
+
+app.post('/api/traces/append', authenticateUser, async (req, res) => {
+  try {
+    const { conversation_id, trace } = req.body || {};
+    if (!conversation_id || !trace) return res.status(400).json({ success: false, message: 'conversation_id 与 trace 必填' });
+    await appendTrace(cacheService, req.user.id, conversation_id, { ts: Date.now(), ...trace });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Trace追加失败:', error);
+    res.status(500).json({ success: false, message: 'Trace追加失败', error: error.message });
+  }
+});
+
+app.get('/api/traces', authenticateUser, async (req, res) => {
+  try {
+    const { conversation_id, limit = 50 } = req.query;
+    if (!conversation_id) return res.status(400).json({ success: false, message: 'conversation_id 必填' });
+    const key = `${req.user.id}:${conversation_id}`;
+    const list = (await cacheService.get('traces', key)) || [];
+    res.json({ success: true, data: { items: list.slice(-Number(limit)) } });
+  } catch (error) {
+    console.error('Trace获取失败:', error);
+    res.status(500).json({ success: false, message: 'Trace获取失败', error: error.message });
+  }
+});
+
+
+
+/**
+ * 工作流模板：案例应用指导
+ */
+app.get('/api/workflows/templates/case-guidance', authenticateUser, async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      id: 'case-guidance',
+      name: '案例应用指导（解析→入库→检索→指导）',
+      steps: [
+        { id: 'parse', title: '解析文件/文本', kind: 'parse' },
+        { id: 'ingest_kb', title: '写入知识库', kind: 'kb' },
+        { id: 'search_kb', title: '检索知识片段', kind: 'kb' },
+        { id: 'case_guidance', title: '生成经验指导', kind: 'guidance' },
+        { id: 'respond', title: '组装结果返回', kind: 'respond' }
+      ]
+    }
+  });
+});
+
+/**
+ * 工作流模板：文档解析专用工作流
+ */
+app.get('/api/workflows/templates/document-parsing', authenticateUser, async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      id: 'document-parsing',
+      name: '智能文档解析工作流',
+      description: '支持多种格式文档的智能解析、内容分析和结构化输出',
+      category: 'document-processing',
+      version: '1.0.0',
+      nodes: [
+        {
+          id: 'start',
+          type: 'start',
+          name: '开始',
+          description: '工作流开始节点',
+          position: { x: 100, y: 200 },
+          config: {
+            inputs: ['file', 'url', 'text'],
+            supportedFormats: ['pdf', 'docx', 'xlsx', 'csv', 'txt', 'json', 'xml', 'png', 'jpg']
+          }
+        },
+        {
+          id: 'document_input',
+          type: 'document_input',
+          name: '文档输入',
+          description: '接收文档文件、URL或文本内容',
+          position: { x: 300, y: 200 },
+          config: {
+            acceptTypes: ['.pdf', '.docx', '.xlsx', '.csv', '.txt', '.json', '.xml', '.png', '.jpg', '.jpeg'],
+            maxFileSize: '50MB',
+            allowUrl: true,
+            allowText: true
+          }
+        },
+        {
+          id: 'format_detection',
+          type: 'format_detection',
+          name: '格式检测',
+          description: '自动检测文档格式和类型',
+          position: { x: 500, y: 200 },
+          config: {
+            autoDetect: true,
+            fallbackToText: true,
+            supportedFormats: {
+              'pdf': { parser: 'pdf_parser', priority: 1 },
+              'docx': { parser: 'docx_parser', priority: 1 },
+              'xlsx': { parser: 'xlsx_parser', priority: 1 },
+              'csv': { parser: 'csv_parser', priority: 1 },
+              'json': { parser: 'json_parser', priority: 1 },
+              'xml': { parser: 'xml_parser', priority: 1 },
+              'image': { parser: 'ocr_reader', priority: 2 },
+              'text': { parser: 'text_processor', priority: 3 }
+            }
+          }
+        },
+        {
+          id: 'parsing_router',
+          type: 'parsing_router',
+          name: '解析路由',
+          description: '根据文档格式选择对应的解析策略',
+          position: { x: 700, y: 200 },
+          config: {
+            routingRules: {
+              'pdf': 'pdf_parsing',
+              'docx': 'docx_parsing',
+              'xlsx': 'xlsx_parsing',
+              'csv': 'csv_parsing',
+              'json': 'json_parsing',
+              'xml': 'xml_parsing',
+              'image': 'ocr_parsing',
+              'text': 'text_parsing'
+            },
+            fallbackRoute: 'text_parsing'
+          }
+        },
+        {
+          id: 'pdf_parsing',
+          type: 'document_parser',
+          name: 'PDF解析',
+          description: '解析PDF文档内容',
+          position: { x: 900, y: 100 },
+          config: {
+            parser: 'pdf_parser',
+            extractText: true,
+            extractImages: false,
+            extractTables: true,
+            preserveLayout: true
+          }
+        },
+        {
+          id: 'docx_parsing',
+          type: 'document_parser',
+          name: 'Word解析',
+          description: '解析Word文档内容',
+          position: { x: 900, y: 200 },
+          config: {
+            parser: 'docx_parser',
+            extractText: true,
+            extractImages: false,
+            preserveFormatting: true
+          }
+        },
+        {
+          id: 'xlsx_parsing',
+          type: 'document_parser',
+          name: 'Excel解析',
+          description: '解析Excel表格数据',
+          position: { x: 900, y: 300 },
+          config: {
+            parser: 'xlsx_parser',
+            extractAllSheets: true,
+            includeHeaders: true,
+            convertToJson: true
+          }
+        },
+        {
+          id: 'content_analysis',
+          type: 'ai_analysis',
+          name: '内容分析',
+          description: 'AI分析文档内容结构和关键信息',
+          position: { x: 1100, y: 200 },
+          config: {
+            analysisTypes: ['structure', 'keywords', 'summary', 'entities'],
+            aiModel: 'deepseek-chat',
+            maxTokens: 4000,
+            temperature: 0.3
+          }
+        },
+        {
+          id: 'result_formatter',
+          type: 'result_formatter',
+          name: '结果格式化',
+          description: '格式化输出解析结果',
+          position: { x: 1300, y: 200 },
+          config: {
+            outputFormat: 'structured',
+            includeMetadata: true,
+            includeAnalysis: true,
+            exportFormats: ['json', 'markdown', 'html']
+          }
+        },
+        {
+          id: 'end',
+          type: 'end',
+          name: '结束',
+          description: '工作流结束节点',
+          position: { x: 1500, y: 200 },
+          config: {
+            outputTypes: ['parsed_content', 'analysis_result', 'metadata']
+          }
+        }
+      ],
+      edges: [
+        { from: 'start', to: 'document_input' },
+        { from: 'document_input', to: 'format_detection' },
+        { from: 'format_detection', to: 'parsing_router' },
+        { from: 'parsing_router', to: 'pdf_parsing', condition: 'format === "pdf"' },
+        { from: 'parsing_router', to: 'docx_parsing', condition: 'format === "docx"' },
+        { from: 'parsing_router', to: 'xlsx_parsing', condition: 'format === "xlsx"' },
+        { from: 'pdf_parsing', to: 'content_analysis' },
+        { from: 'docx_parsing', to: 'content_analysis' },
+        { from: 'xlsx_parsing', to: 'content_analysis' },
+        { from: 'content_analysis', to: 'result_formatter' },
+        { from: 'result_formatter', to: 'end' }
+      ],
+      metadata: {
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: '1.0.0',
+        tags: ['document', 'parsing', 'ai', 'analysis'],
+        estimatedDuration: '30-120s',
+        complexity: 'medium'
+      }
+    }
+  });
+});
+
+/**
+ * 执行：案例应用指导工作流
+ * 入参：{ fileName, fileType, base64?, text?, query?, saveScope='user'|'session', conversation_id, category? }
+ */
+app.post('/api/workflows/case-guidance/execute', authenticateUser, async (req, res) => {
+  const userId = req.user.id;
+  const { fileName = '未命名', fileType = 'text', base64, text, query, saveScope = 'user', conversation_id, category } = req.body || {};
+  try {
+    if (!conversation_id) return res.status(400).json({ success: false, message: 'conversation_id 必填' });
+
+    // Step: parse
+    let plainText = '';
+    let parseMeta = {};
+    try {
+      const pluginId = pickDocPluginByType(fileType);
+      if (pluginId) {
+        const input = {};
+        if (base64) input.base64 = base64;
+        if (text) input.text = text;
+        const exec = await pluginEcosystem.executePlugin(pluginId, input, {});
+        if (exec && exec.success) {
+          if (exec.text) plainText = exec.text;
+          else if (exec.preview) plainText = JSON.stringify(exec.preview).slice(0, 20000);
+          else if (exec.data) plainText = (typeof exec.data === 'string') ? exec.data : JSON.stringify(exec.data).slice(0, 20000);
+          parseMeta = { pluginId, length: plainText.length };
+        }
+      }
+    } catch (e) {
+      console.warn('解析失败回退文本', e.message);
+    }
+    if (!plainText) plainText = text || '';
+    await appendTrace(cacheService, userId, conversation_id, { ts: Date.now(), category: 'parse', name: fileName, status: 'success', output: parseMeta });
+
+    // Step: ingest_kb
+    const chunks = simpleChunkText(plainText, 1200).map((c, idx) => ({ docId: `doc_${Date.now()}`, idx, title: fileName, text: c }));
+    const scopeKey = saveScope === 'session' && conversation_id ? `${userId}:${conversation_id}` : `${userId}`;
+    const existed = await kbGetChunks(cacheService, scopeKey);
+    const next = [...(existed || []), ...chunks];
+    await kbSetChunks(cacheService, scopeKey, next);
+    await appendTrace(cacheService, userId, conversation_id, { ts: Date.now(), category: 'ingest_kb', name: 'chunks', status: 'success', output: { added: chunks.length, total: next.length } });
+
+    // Step: search_kb（若有query）
+    let kbHits = [];
+    if (query) {
+      const scored = (next || []).map(ch => ({
+        docId: ch.docId,
+        title: ch.title,
+        idx: ch.idx,
+        score: scoreByKeywordOverlap(query, ch.text),
+        content: ch.text
+      })).sort((a,b)=>b.score-a.score).slice(0, 5);
+      kbHits = scored.map(s => ({ docId: s.docId, title: s.title, idx: s.idx, score: Number(s.score.toFixed(3)) }));
+      await appendTrace(cacheService, userId, conversation_id, { ts: Date.now(), category: 'search_kb', name: 'keyword-overlap', status: 'success', input: { query }, output: { hits: kbHits } });
+    }
+
+    // Step: case_guidance（结合历史案例库）
+    let guidance = null;
+    try {
+      const resp = await axios.post('http://localhost:3004/api/chat/case-guidance', { query: query || fileName, category, limit: 8 });
+      if (resp.data?.success) guidance = resp.data.data?.guidance;
+    } catch (e) {
+      console.warn('调用case-guidance失败', e.message);
+    }
+    await appendTrace(cacheService, userId, conversation_id, { ts: Date.now(), category: 'case_guidance', name: 'generate', status: guidance ? 'success' : 'error' });
+
+    // Step: respond
+    await appendTrace(cacheService, userId, conversation_id, { ts: Date.now(), category: 'respond', name: 'return', status: 'success' });
+
+    return res.json({ success: true, data: { guidance, kb_hits: kbHits } });
+  } catch (error) {
+    console.error('案例应用指导工作流失败:', error);
+    res.status(500).json({ success: false, message: '案例应用指导工作流失败', error: error.message });
+  }
+});
+
+/**
+ * 新增：从对话消息入库（将选中消息内容保存到KB）
+ * 入参：{ conversation_id, messages: [{id?, role, content}], saveScope, conversation_scope_id? }
+ */
+app.post('/api/knowledge/ingest-from-messages', authenticateUser, async (req, res) => {
+  try {
+    const { conversation_id, messages = [], saveScope = 'user', conversation_scope_id } = req.body || {};
+    if (!conversation_id || !Array.isArray(messages) || !messages.length) {
+      return res.status(400).json({ success: false, message: 'conversation_id 与 messages 不能为空' });
+    }
+
+    const plainText = messages.map(m => `【${m.role}】${m.content}`).join('\n');
+    const chunks = simpleChunkText(plainText, 1200).map((c, idx) => ({ docId: `conv_${conversation_id}`, idx, title: `对话:${conversation_id}`, text: c }));
+
+    const scopeKey = saveScope === 'session' && conversation_scope_id ? `${req.user.id}:${conversation_scope_id}` : `${req.user.id}`;
+    const existed = await kbGetChunks(cacheService, scopeKey);
+    const next = [...(existed || []), ...chunks];
+    await kbSetChunks(cacheService, scopeKey, next);
+
+    // 记录Trace
+    const trace = { ts: Date.now(), category: 'ingest', name: 'messages->kb', status: 'success', input: { count: messages.length }, output: { added: chunks.length, total: next.length } };
+    await appendTrace(cacheService, req.user.id, conversation_id, trace);
+
+    res.json({ success: true, data: { added: chunks.length, total: next.length } });
+  } catch (error) {
+    console.error('对话消息入库失败:', error);
+    res.status(500).json({ success: false, message: '对话消息入库失败', error: error.message });
+  }
+});
+
+
+    const scopeKey = kb_scope === 'session' && conversation_id ? `${req.user.id}:${conversation_id}` : `${req.user.id}`;
+    const chunks = await kbGetChunks(cacheService, scopeKey);
+    if (!chunks || !chunks.length) return res.json({ success: true, data: { query, results: [], total_found: 0 } });
+
+    const scored = chunks.map(ch => ({
+      docId: ch.docId,
+      title: ch.title,
+      content: ch.text,
+      idx: ch.idx,
+      score: scoreByKeywordOverlap(query, ch.text)
+    })).sort((a, b) => b.score - a.score).slice(0, Math.max(1, Math.min(10, top_k)));
+
+    res.json({ success: true, data: { query, results: scored, total_found: scored.length } });
+  } catch (error) {
+    console.error('知识检索失败:', error);
+    res.status(500).json({ success: false, message: '知识检索失败', error: error.message });
   }
 });
 
@@ -3334,6 +4196,8 @@ app.post('/api/plugins/:pluginId/execute', authenticateUserOrAnonymous, async (r
     }
 
     console.log(`🔄 用户 ${req.user.id} 执行插件: ${pluginId}`);
+    console.log('📥 接收到的输入数据:', JSON.stringify(input, null, 2));
+    console.log('⚙️ 执行选项:', JSON.stringify(options, null, 2));
 
     // 执行插件
     const executionResult = await pluginEcosystem.executePlugin(pluginId, input, options);
@@ -3351,6 +4215,423 @@ app.post('/api/plugins/:pluginId/execute', authenticateUserOrAnonymous, async (r
       message: '执行插件失败',
       error: error.message
     });
+  }
+});
+
+/**
+ * 执行插件 (Coze Studio路径)
+ */
+app.post('/api/coze-studio/plugins/:pluginId/execute', authenticateUserOrAnonymous, async (req, res) => {
+  try {
+    const { pluginId } = req.params;
+    const { input, options = {} } = req.body;
+
+    if (!input) {
+      return res.status(400).json({
+        success: false,
+        message: '插件输入不能为空'
+      });
+    }
+
+    console.log(`🔄 用户 ${req.user.id} 通过Coze Studio执行插件: ${pluginId}`);
+
+    // 执行插件
+    const executionResult = await pluginEcosystem.executePlugin(pluginId, input, options);
+
+    res.json({
+      success: executionResult.success,
+      data: executionResult,
+      message: executionResult.success ? '插件执行成功' : '插件执行失败'
+    });
+
+  } catch (error) {
+    console.error('执行插件失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '执行插件失败',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * 执行文档解析工作流
+ */
+app.post('/api/workflows/execute/document-parsing', authenticateUser, async (req, res) => {
+  try {
+    const { inputData, detectedFormat } = req.body;
+
+    if (!inputData) {
+      return res.status(400).json({
+        success: false,
+        message: '输入数据不能为空'
+      });
+    }
+
+    console.log(`🔄 用户 ${req.user.id} 执行文档解析工作流`);
+
+    // 本地定义文档插件选择函数
+    const pickDocPluginByType = (fileType = 'text') => {
+      const t = (fileType || '').toLowerCase();
+      if (t.includes('pdf')) return 'pdf_parser';
+      if (t.includes('csv')) return 'csv_parser';
+      if (t.includes('xlsx') || t.includes('excel') || t === 'xls') return 'xlsx_parser';
+      if (t.includes('docx') || t.includes('doc')) return 'docx_parser';
+      if (t.includes('json')) return 'json_parser';
+      if (t.includes('xml')) return 'xml_parser';
+      return null;
+    };
+
+    let result = {
+      content: '',
+      metadata: {},
+      parser: 'unknown'
+    };
+
+    // 根据检测到的格式选择对应的解析器
+    const pluginId = pickDocPluginByType(detectedFormat);
+
+    if (pluginId && inputData.base64) {
+      try {
+        const pluginInput = {
+          base64: inputData.base64
+        };
+
+        const executionResult = await pluginEcosystem.executePlugin(pluginId, pluginInput, {});
+
+        if (executionResult && executionResult.success) {
+          result = {
+            content: executionResult.text || executionResult.data || '',
+            metadata: {
+              fileName: inputData.name,
+              format: detectedFormat,
+              fileSize: inputData.size,
+              parser: pluginId
+            },
+            parser: pluginId
+          };
+        }
+      } catch (error) {
+        console.warn('插件解析失败，使用文本回退:', error.message);
+      }
+    }
+
+    // 如果插件解析失败或没有对应插件，使用简单文本处理
+    if (!result.content) {
+      if (inputData.type === 'text') {
+        result.content = inputData.text || '';
+      } else if (inputData.base64) {
+        try {
+          result.content = Buffer.from(inputData.base64, 'base64').toString('utf-8');
+        } catch {
+          result.content = '无法解析文件内容';
+        }
+      }
+
+      result.metadata = {
+        fileName: inputData.name || 'unknown',
+        format: detectedFormat,
+        fileSize: inputData.size || 0,
+        parser: 'fallback_text'
+      };
+      result.parser = 'fallback_text';
+    }
+
+    res.json({
+      success: true,
+      data: result,
+      message: '文档解析成功'
+    });
+
+  } catch (error) {
+    console.error('文档解析工作流执行失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '文档解析失败',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * AI文档分析
+ */
+app.post('/api/ai/analyze-document', authenticateUser, async (req, res) => {
+  try {
+    const { content, analysisTypes = ['structure', 'keywords', 'summary'] } = req.body;
+
+    if (!content || typeof content !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '文档内容不能为空'
+      });
+    }
+
+    console.log(`🤖 用户 ${req.user.id} 请求AI文档分析`);
+
+    const analysis = {};
+
+    // 基础统计分析
+    const words = content.split(/\s+/).filter(Boolean);
+    const sentences = content.split(/[.!?]+/).filter(Boolean);
+    const paragraphs = content.split(/\n\s*\n/).filter(Boolean);
+
+    if (analysisTypes.includes('structure')) {
+      analysis.structure = `文档结构分析：
+- 总字数：${words.length}
+- 句子数：${sentences.length}
+- 段落数：${paragraphs.length}
+- 平均句长：${Math.round(words.length / sentences.length)} 词/句
+- 平均段长：${Math.round(sentences.length / paragraphs.length)} 句/段`;
+    }
+
+    if (analysisTypes.includes('keywords')) {
+      // 简单的关键词提取
+      const wordCount = {};
+      words.forEach(word => {
+        const cleanWord = word.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, '');
+        if (cleanWord.length > 2) {
+          wordCount[cleanWord] = (wordCount[cleanWord] || 0) + 1;
+        }
+      });
+
+      analysis.keywords = Object.entries(wordCount)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 15)
+        .map(([word]) => word);
+    }
+
+    if (analysisTypes.includes('summary')) {
+      // 简单的摘要生成（取前几句）
+      const firstSentences = sentences.slice(0, 3).join('。');
+      analysis.summary = firstSentences.length > 200
+        ? firstSentences.substring(0, 200) + '...'
+        : firstSentences;
+    }
+
+    if (analysisTypes.includes('entities')) {
+      // 简单的实体识别（基于模式匹配）
+      const entities = [];
+
+      // 匹配邮箱
+      const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+      const emails = content.match(emailPattern) || [];
+      emails.forEach(email => {
+        entities.push({ text: email, type: 'EMAIL' });
+      });
+
+      // 匹配电话号码
+      const phonePattern = /\b\d{3}-\d{3}-\d{4}\b|\b\d{11}\b/g;
+      const phones = content.match(phonePattern) || [];
+      phones.forEach(phone => {
+        entities.push({ text: phone, type: 'PHONE' });
+      });
+
+      // 匹配日期
+      const datePattern = /\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/g;
+      const dates = content.match(datePattern) || [];
+      dates.forEach(date => {
+        entities.push({ text: date, type: 'DATE' });
+      });
+
+      analysis.entities = entities.slice(0, 20); // 限制数量
+    }
+
+    res.json({
+      success: true,
+      data: {
+        analysis,
+        model: 'basic_nlp',
+        timestamp: new Date().toISOString()
+      },
+      message: 'AI分析完成'
+    });
+
+  } catch (error) {
+    console.error('AI文档分析失败:', error);
+    res.status(500).json({
+      success: false,
+      message: 'AI分析失败',
+      error: error.message
+    });
+  }
+});
+
+
+
+/**
+ * 查询文档解析工作流的执行结果
+ */
+app.get('/api/workflows/document-parsing/executions/:id', authenticateUserOrAnonymous, async (req, res) => {
+  const exec = executionStore.get(req.params.id)
+  if(!exec) return res.status(404).json({ success:false, message:'未找到执行记录' })
+  res.json({ success:true, data: exec })
+})
+
+/**
+ * 列出最近N次执行（演示）
+ */
+app.get('/api/workflows/document-parsing/executions', authenticateUserOrAnonymous, async (req, res) => {
+  const list = Array.from(executionStore.values()).slice(-50).reverse()
+  res.json({ success:true, data: list })
+})
+
+/**
+ * 通用工作流运行（最小实现）
+ * 路径：/api/workflows/run
+ * 输入：{ workflow: { nodes: [...] }, input: { file: { name,type,base64,text } } }
+ * 特性：线性顺序执行（后续可按 edges 拓扑排序）；格式自适应（文本/表格分别分析）
+ */
+app.post('/api/workflows/run', authenticateUserOrAnonymous, async (req, res) => {
+  try {
+    const startAll = Date.now();
+    const { workflow = {}, input = {}, options = {} } = req.body || {};
+    const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : [];
+
+    const steps = [];
+    const record = (title, status, data = {}, t0, t1) => steps.push({ title, status, data, started_at: t0, completed_at: t1, duration_ms: (t1 - t0) });
+
+    // 上下文
+    const ctx = { vars: {}, artifacts: {}, input };
+
+    // 预安装基础插件（尽力而为）
+    try { await ensureCorePluginsInstalled(); } catch(e) {}
+
+    // 执行辅助
+    const getFile = () => (input && input.file) ? input.file : {};
+
+    // 文档插件选择函数（本地定义）
+    const pickDocPluginByType = (fileType = 'text') => {
+      const t = (fileType || '').toLowerCase();
+      if (t.includes('pdf')) return 'pdf_parser';
+      if (t.includes('csv')) return 'csv_parser';
+      if (t.includes('xlsx') || t.includes('excel') || t === 'xls') return 'xlsx_parser';
+      if (t.includes('docx') || t.includes('doc')) return 'docx_parser';
+      if (t.includes('json')) return 'json_parser';
+      if (t.includes('xml')) return 'xml_parser';
+      return null;
+    };
+
+    // 逐节点线性执行（最小实现）
+    for (const node of nodes) {
+      const t0 = Date.now();
+      try {
+        switch (node.type) {
+          case 'input_file': {
+            const f = getFile();
+            record('input_file', 'completed', { name: f.name, type: f.type, hasBase64: !!f.base64, textLen: (f.text||'').length }, t0, Date.now());
+            break;
+          }
+          case 'detect_type': {
+            const f = getFile();
+            const inferredType = (f.type || (f.name||'').split('.').pop() || '').toLowerCase();
+            ctx.vars.detectedType = inferredType;
+            record('detect_type', 'completed', { inferredType }, t0, Date.now());
+            break;
+          }
+          case 'parse_auto': {
+            const f = getFile();
+            const inferredType = ctx.vars.detectedType || (f.type || (f.name||'').split('.').pop() || '').toLowerCase();
+            const pluginId = pickDocPluginByType(inferredType) || (inferredType.match(/png|jpg|jpeg|bmp|gif|webp/) ? 'ocr_reader' : null);
+            let parseResult = null;
+            if (pluginId) {
+              const pin = {}; if (f.base64) pin.base64 = f.base64; if (f.text) pin.text = f.text;
+              try {
+                const pluginResponse = await pluginEcosystem.executePlugin(pluginId, pin, node.params || {});
+                if (pluginResponse && pluginResponse.result) {
+                  // 从插件响应中提取文本内容
+                  parseResult = {
+                    success: true,
+                    type: pluginResponse.result.type || 'text',
+                    text: pluginResponse.result.text || pluginResponse.result.data?.text || pluginResponse.result.data?.content || '',
+                    html: pluginResponse.result.html || pluginResponse.result.data?.html || null,
+                    preview: pluginResponse.result.data?.preview || [],
+                    metadata: pluginResponse.result.metadata || {}
+                  };
+                }
+              } catch(e) {
+                console.warn('插件执行失败:', e.message);
+                parseResult = null;
+              }
+            }
+            if (!parseResult) {
+              // 文本兜底
+              parseResult = { success: true, type: 'text', text: f.text || (f.base64 ? Buffer.from(f.base64, 'base64').toString('utf-8') : '') };
+            }
+            ctx.vars.parseResult = parseResult;
+            record('parse_document', 'completed', { type: parseResult?.type, textLen: (parseResult?.text||'').length, rows: (parseResult?.preview||[]).length }, t0, Date.now());
+            break;
+          }
+          case 'normalize_auto':
+          case 'normalize_text':
+          case 'normalize_table': {
+            const pr = ctx.vars.parseResult || {};
+            const normalized = { res: {}, basicSummary: null };
+            if ((node.type === 'normalize_text') || (node.type === 'normalize_auto' && pr.text)) {
+              normalized.res = { type: pr.type || 'text', text: pr.text || '', html: pr.html || null, metadata: pr.metadata || {} };
+            } else if ((node.type === 'normalize_table') || (node.type === 'normalize_auto' && (pr.preview || pr.rows || (pr.data && (pr.data.preview || pr.data.columns))))) {
+              const rows = Array.isArray(pr.preview) ? pr.preview : (Array.isArray(pr.rows) ? pr.rows : (Array.isArray(pr.data?.preview) ? pr.data.preview : []));
+              normalized.res = { type: pr.type || 'table', preview: rows.slice(0, 100), rows: rows, columns: pr.columns || pr.data?.columns || {} };
+            } else {
+              normalized.res = { type: 'unknown', raw: pr };
+            }
+            ctx.vars.normalized = normalized;
+            record('normalize', 'completed', { res_type: normalized.res.type }, t0, Date.now());
+            break;
+          }
+          case 'summarize_text': {
+            const n = ctx.vars.normalized || {}; const r = n.res || {};
+            if ((r.type || 'text') === 'text' && (r.text || '').length) {
+              let exec = null;
+              try { exec = await pluginEcosystem.executePlugin('text_summarizer', { text: r.text }, { max_sentences: (node.params?.max_sentences || 5) }); } catch(e) {}
+              n.basicSummary = { kind: 'text', summary: exec?.summary || '', sentences: exec?.sentences || [] };
+              ctx.vars.normalized = n;
+              record('analyze_text', 'completed', { summaryLen: (n.basicSummary.summary||'').length }, t0, Date.now());
+            } else {
+              record('analyze_text', 'skipped', { reason: 'not_text' }, t0, Date.now());
+            }
+            break;
+          }
+          case 'table_stats': {
+            const n = ctx.vars.normalized || {}; const r = n.res || {};
+            if ((r.type || 'table') !== 'text' && (Array.isArray(r.preview) || Array.isArray(r.rows))) {
+              const ds = Array.isArray(r.preview) ? r.preview : (r.rows || []);
+              let exec = null;
+              try { exec = await pluginEcosystem.executePlugin('statistical_analyzer', { dataset: ds }, node.params || {}); } catch(e) {}
+              n.basicSummary = { kind: 'table', stats: exec?.stats || {}, notes: exec?.recommendations || [] };
+              ctx.vars.normalized = n;
+              record('analyze_table', 'completed', { fields: Object.keys(n.basicSummary.stats||{}).length }, t0, Date.now());
+            } else {
+              record('analyze_table', 'skipped', { reason: 'not_table' }, t0, Date.now());
+            }
+            break;
+          }
+          case 'present_text':
+          case 'present_table': {
+            // 展示层节点：目前仅记录
+            record(node.type, 'completed', {}, t0, Date.now());
+            break;
+          }
+          case 'output_result': {
+            // 汇总输出
+            record('output_result', 'completed', {}, t0, Date.now());
+            break;
+          }
+          default: {
+            record(node.type || 'unknown', 'skipped', { reason: 'unknown_node' }, t0, Date.now());
+            break;
+          }
+        }
+      } catch (e) {
+        record(node.type || 'unknown', 'failed', { error: e.message }, t0, Date.now());
+      }
+    }
+
+    const duration = Date.now() - startAll;
+    return res.json({ success: true, data: { parsed: ctx.vars.normalized || null, steps, duration, artifacts: ctx.artifacts || {} }, message: '工作流执行完成' });
+  } catch (error) {
+    console.error('通用工作流执行失败:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -3426,6 +4707,9 @@ async function startServer() {
     });
   } catch (error) {
     console.error('❌ 服务启动失败:', error);
+    process.exit(1);
+  }
+}
 
 // 为场景运行自动确保核心插件已安装
 async function ensureCorePluginsInstalled() {
@@ -3434,10 +4718,6 @@ async function ensureCorePluginsInstalled() {
     if (!pluginEcosystem.activePlugins || !pluginEcosystem.activePlugins.get(pid)) {
       try { await pluginEcosystem.installPlugin(pid, {}); } catch (e) { console.warn('插件自动安装失败', pid, e.message); }
     }
-  }
-}
-
-    process.exit(1);
   }
 }
 

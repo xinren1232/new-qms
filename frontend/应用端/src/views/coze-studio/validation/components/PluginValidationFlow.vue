@@ -115,12 +115,37 @@
               </div>
             </el-tab-pane>
             <el-tab-pane label="自定义数据" name="custom">
-              <el-input
-                v-model="customData"
-                type="textarea"
-                :rows="8"
-                placeholder="请输入测试数据..."
-              />
+              <!-- 文件上传区域 -->
+              <div v-if="supportsFileUpload" class="custom-file-upload">
+                <h5>📁 上传自定义文件</h5>
+                <el-upload
+                  drag
+                  :auto-upload="false"
+                  :on-change="onCustomFileChange"
+                  :accept="getAcceptTypes()"
+                  :show-file-list="true"
+                  :limit="1"
+                  class="custom-upload"
+                >
+                  <i class="el-icon-upload" />
+                  <div class="el-upload__text">拖拽文件到此或点击上传</div>
+                  <div class="el-upload__tip">支持 {{ getAcceptTypes() }}</div>
+                </el-upload>
+                <div class="upload-divider">
+                  <span>或者</span>
+                </div>
+              </div>
+
+              <!-- 文本输入区域 -->
+              <div class="custom-text-input">
+                <h5 v-if="supportsFileUpload">✏️ 直接输入数据</h5>
+                <el-input
+                  v-model="customData"
+                  type="textarea"
+                  :rows="8"
+                  placeholder="请输入测试数据（JSON格式）..."
+                />
+              </div>
             </el-tab-pane>
           </el-tabs>
         </div>
@@ -990,6 +1015,12 @@ const hasAvailableTestFiles = computed(() => {
   return availableTestFiles.value.length > 0
 })
 
+// 是否支持文件上传（文档解析类插件）
+const supportsFileUpload = computed(() => {
+  const documentPlugins = ['pdf_parser', 'xlsx_parser', 'csv_parser', 'docx_parser', 'json_parser', 'xml_parser', 'excel_analyzer', 'ocr_reader', 'defect_detector']
+  return documentPlugins.includes(props.pluginId)
+})
+
 // 方法
 const getAcceptTypes = () => pluginInfo.value.acceptTypes || '*'
 const getSampleData = () => pluginInfo.value.samples || []
@@ -997,6 +1028,22 @@ const getConfigOptions = () => pluginInfo.value.configOptions || []
 
 const onFileChange = (uploadFile) => {
   file.value = uploadFile?.raw || null
+}
+
+const onCustomFileChange = async (uploadFile) => {
+  // 获取实际的文件对象
+  const actualFile = uploadFile?.raw || uploadFile
+
+  if (!actualFile || !(actualFile instanceof File || actualFile instanceof Blob)) return
+
+  try {
+    const fileData = await readFileAsInput(actualFile)
+    customData.value = JSON.stringify(fileData, null, 2)
+    ElMessage.success(`文件 ${uploadFile.name} 已加载到自定义数据区域`)
+  } catch (error) {
+    console.error('文件读取失败:', error)
+    ElMessage.error('文件读取失败: ' + error.message)
+  }
 }
 
 const loadSampleData = (sample) => {
@@ -1195,22 +1242,29 @@ const startValidation = async () => {
     stage.value = '执行插件'
     percent.value = 50
     addLog('INFO', `调用插件: ${props.pluginId}`)
-    
+
     const startTime = Date.now()
-    const response = await apiExecutePlugin(props.pluginId, { input: inputData, ...config })
+    let response
+    try {
+      response = await apiExecutePlugin(props.pluginId, { input: inputData, ...config })
+    } catch (apiError) {
+      console.error('API调用失败:', apiError)
+      throw new Error(`插件执行失败: ${apiError.message || '网络错误'}`)
+    }
+
     const duration = Date.now() - startTime
-    
+
     percent.value = 100
     stage.value = '完成'
     addLog('SUCCESS', `插件执行成功，耗时: ${duration}ms`)
-    
+
     // 设置结果
     validationResult.success = true
     validationResult.data = response.data?.result || response.data || response
     validationResult.duration = duration
     validationResult.dataType = typeof validationResult.data
     validationResult.status = '成功'
-    
+
     step.value = 2
     
   } catch (error) {
@@ -1223,23 +1277,48 @@ const startValidation = async () => {
 
 const readFileAsInput = async (file) => {
   return new Promise((resolve, reject) => {
+    if (!file || !(file instanceof File || file instanceof Blob)) {
+      reject(new Error('无效的文件对象'))
+      return
+    }
+
     const reader = new FileReader()
+
     reader.onload = () => {
-      const result = reader.result
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        resolve({ csv: result })
-      } else {
-        // Excel等二进制文件转base64
-        const base64 = result.split(',')[1] || ''
-        resolve({ base64 })
+      try {
+        const result = reader.result
+        if (file.name && file.name.toLowerCase().endsWith('.csv')) {
+          resolve({ csv: result })
+        } else {
+          // Excel等二进制文件转base64
+          const base64 = result.split(',')[1] || ''
+          resolve({ base64, fileName: file.name || 'unknown', fileType: file.type || 'application/octet-stream' })
+        }
+      } catch (error) {
+        console.error('文件处理错误:', error)
+        reject(new Error(`文件处理失败: ${error.message}`))
       }
     }
-    reader.onerror = () => reject(new Error('文件读取失败'))
-    
-    if (file.name.toLowerCase().endsWith('.csv')) {
-      reader.readAsText(file)
-    } else {
-      reader.readAsDataURL(file)
+
+    reader.onerror = (error) => {
+      console.error('文件读取错误:', error)
+      reject(new Error('文件读取失败'))
+    }
+
+    reader.onabort = () => {
+      console.error('文件读取被中断')
+      reject(new Error('文件读取被中断'))
+    }
+
+    try {
+      if (file.name && file.name.toLowerCase().endsWith('.csv')) {
+        reader.readAsText(file)
+      } else {
+        reader.readAsDataURL(file)
+      }
+    } catch (error) {
+      console.error('启动文件读取失败:', error)
+      reject(new Error(`启动文件读取失败: ${error.message}`))
     }
   })
 }
@@ -1432,6 +1511,54 @@ onMounted(() => {
 
 .no-test-files {
   margin-top: 8px;
+}
+
+/* 自定义文件上传样式 */
+.custom-file-upload {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px dashed #d1d5db;
+}
+
+.custom-file-upload h5 {
+  margin: 0 0 12px 0;
+  color: #374151;
+  font-weight: 600;
+}
+
+.custom-upload {
+  margin-bottom: 12px;
+}
+
+.upload-divider {
+  text-align: center;
+  position: relative;
+  margin: 16px 0;
+}
+
+.upload-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.upload-divider span {
+  background: #f8fafc;
+  padding: 0 12px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.custom-text-input h5 {
+  margin: 0 0 12px 0;
+  color: #374151;
+  font-weight: 600;
 }
 
 

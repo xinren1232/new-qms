@@ -593,10 +593,13 @@ const sendTestMessage = async () => {
       }
     }
 
-    // 调用Agent对话API
+    // 调用Agent对话API（开启轻量RAG，并使用用户级知识）
     const response = await cozeStudioAPI.chatWithAgent(currentAgentId.value, {
       message: userMessage,
-      conversation_id: currentConversationId.value
+      conversation_id: currentConversationId.value,
+      use_rag: true,
+      kb_scope: 'user',
+      top_k: 3
     })
 
     if (response.success) {

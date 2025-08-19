@@ -9,7 +9,7 @@ const EventEmitter = require('events');
 class RedisCacheService extends EventEmitter {
   constructor(options = {}) {
     super();
-    
+
     this.options = {
       host: options.host || process.env.REDIS_HOST || 'localhost',
       port: options.port || process.env.REDIS_PORT || 6379,
@@ -20,12 +20,12 @@ class RedisCacheService extends EventEmitter {
       connectTimeout: options.connectTimeout || 10000,
       lazyConnect: true
     };
-    
+
     this.client = null;
     this.connected = false;
     this.connecting = false;
     this.errorLogged = false;
-    
+
     // 缓存策略配置
     this.cacheStrategies = {
       // AI模型配置缓存
@@ -47,6 +47,16 @@ class RedisCacheService extends EventEmitter {
       chat_history: {
         ttl: 7200, // 2小时
         prefix: 'qms:chat:'
+      },
+      // 知识库（轻量RAG M1）
+      kb: {
+        ttl: 604800, // 7天
+        prefix: 'qms:kb:'
+      },
+      // 执行过程 Traces
+      traces: {
+        ttl: 86400, // 24小时
+        prefix: 'qms:traces:'
       },
       // 系统状态缓存
       system_status: {
@@ -164,15 +174,15 @@ class RedisCacheService extends EventEmitter {
       const config = this.cacheStrategies[strategy];
       const cacheKey = this.getCacheKey(strategy, key);
       const ttl = customTTL || config.ttl;
-      
+
       const serializedValue = JSON.stringify(value);
-      
+
       if (ttl > 0) {
         await this.client.setEx(cacheKey, ttl, serializedValue);
       } else {
         await this.client.set(cacheKey, serializedValue);
       }
-      
+
       console.log(`✅ 缓存已设置: ${strategy}:${key} (TTL: ${ttl}s)`);
       return true;
     } catch (error) {
@@ -193,11 +203,11 @@ class RedisCacheService extends EventEmitter {
     try {
       const cacheKey = this.getCacheKey(strategy, key);
       const value = await this.client.get(cacheKey);
-      
+
       if (value === null) {
         return null;
       }
-      
+
       const parsedValue = JSON.parse(value);
       console.log(`✅ 缓存命中: ${strategy}:${key}`);
       return parsedValue;
@@ -219,7 +229,7 @@ class RedisCacheService extends EventEmitter {
     try {
       const cacheKey = this.getCacheKey(strategy, key);
       const result = await this.client.del(cacheKey);
-      
+
       console.log(`✅ 缓存已删除: ${strategy}:${key}`);
       return result > 0;
     } catch (error) {
@@ -257,7 +267,7 @@ class RedisCacheService extends EventEmitter {
     try {
       const cacheKey = this.getCacheKey(strategy, key);
       const result = await this.client.expire(cacheKey, ttl);
-      
+
       console.log(`✅ 缓存过期时间已设置: ${strategy}:${key} (TTL: ${ttl}s)`);
       return result === 1;
     } catch (error) {
@@ -294,13 +304,13 @@ class RedisCacheService extends EventEmitter {
     try {
       const config = this.cacheStrategies[strategy];
       const pattern = `${config.prefix}*`;
-      
+
       const keys = await this.client.keys(pattern);
       if (keys.length > 0) {
         await this.client.del(keys);
         console.log(`✅ 已清空缓存策略: ${strategy} (${keys.length}个键)`);
       }
-      
+
       return true;
     } catch (error) {
       console.error(`❌ 清空缓存策略失败 ${strategy}:`, error.message);
@@ -368,7 +378,7 @@ class RedisCacheService extends EventEmitter {
         console.error('❌ 关闭Redis连接失败:', error.message);
       }
     }
-    
+
     this.connected = false;
     this.client = null;
   }

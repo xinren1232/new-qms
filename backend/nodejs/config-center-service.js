@@ -7,7 +7,7 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = 8082;
+const PORT = 3003;
 
 // 中间件
 app.use(cors());

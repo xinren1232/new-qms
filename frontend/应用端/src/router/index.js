@@ -534,6 +534,17 @@ const routes = [
           hidden: true
         }
       },
+      {
+        path: 'workflows/document-parsing',
+        name: 'DocumentParsingWorkflow',
+        component: () => import('@/views/coze-studio/workflows/document-parsing-flow.vue'),
+        meta: {
+          title: '文档解析工作流',
+          icon: 'DocumentCopy',
+          description: '智能文档解析工作流',
+          hidden: true
+        }
+      },
 
       // 插件中心
       {

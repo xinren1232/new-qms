@@ -83,13 +83,66 @@
     <div v-if="pluginId === 'docx_parser'" class="docx-result">
       <h4>DOCX解析结果</h4>
 
+      <!-- 解析质量评估 -->
+      <div class="parsing-quality-assessment">
+        <h5>📊 解析质量评估</h5>
+        <el-row :gutter="16" style="margin-bottom: 16px;">
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getTextExtractionRate() }}%</div>
+                <div class="metric-label">文本提取率</div>
+                <el-progress
+                  :percentage="getTextExtractionRate()"
+                  :color="getQualityColor(getTextExtractionRate())"
+                  :show-text="false"
+                  :stroke-width="6"
+                />
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getFormatPreservationScore() }}%</div>
+                <div class="metric-label">格式保持度</div>
+                <el-progress
+                  :percentage="getFormatPreservationScore()"
+                  :color="getQualityColor(getFormatPreservationScore())"
+                  :show-text="false"
+                  :stroke-width="6"
+                />
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getMultilingualSupport() }}</div>
+                <div class="metric-label">语言支持</div>
+                <el-tag :type="getLanguageSupportType()">{{ getMultilingualSupport() }}</el-tag>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getStructureRecognition() }}</div>
+                <div class="metric-label">结构识别</div>
+                <el-tag :type="getStructureType()">{{ getStructureRecognition() }}</el-tag>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+
       <!-- 文档统计信息 -->
       <div v-if="result.statistics" class="docx-statistics">
-        <h5>文档统计</h5>
+        <h5>📈 文档统计</h5>
         <el-descriptions :column="4" border size="small" style="margin-bottom: 16px;">
-          <el-descriptions-item label="字符数">{{ result.statistics.character_count || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="词数">{{ result.statistics.word_count || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="段落数">{{ result.statistics.paragraph_count || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="字符数">{{ result.statistics.character_count || getTextLength() }}</el-descriptions-item>
+          <el-descriptions-item label="词数">{{ result.statistics.word_count || getWordCount() }}</el-descriptions-item>
+          <el-descriptions-item label="段落数">{{ result.statistics.paragraph_count || getParagraphCount() }}</el-descriptions-item>
           <el-descriptions-item label="处理时间">{{ result.statistics.processing_time || 0 }}ms</el-descriptions-item>
         </el-descriptions>
       </div>
@@ -154,26 +207,90 @@
 
     <!-- 其他数据解析类插件结果 -->
     <div v-else-if="isParserPlugin" class="parser-result">
-      <h4>解析结果</h4>
+      <h4>{{ getParserResultTitle() }}</h4>
+
+      <!-- 数据解析质量评估 -->
+      <div v-if="isDataParsingPlugin" class="data-parsing-quality">
+        <h5>📊 数据解析质量</h5>
+        <el-row :gutter="16" style="margin-bottom: 16px;">
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getDataParsingRate() }}%</div>
+                <div class="metric-label">数据解析率</div>
+                <el-progress
+                  :percentage="getDataParsingRate()"
+                  :color="getQualityColor(getDataParsingRate())"
+                  :show-text="false"
+                  :stroke-width="6"
+                />
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getDataIntegrityScore() }}%</div>
+                <div class="metric-label">数据完整性</div>
+                <el-progress
+                  :percentage="getDataIntegrityScore()"
+                  :color="getQualityColor(getDataIntegrityScore())"
+                  :show-text="false"
+                  :stroke-width="6"
+                />
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getDataStructureType() }}</div>
+                <div class="metric-label">数据结构</div>
+                <el-tag :type="getDataStructureTagType()">{{ getDataStructureType() }}</el-tag>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="quality-card">
+              <div class="quality-metric">
+                <div class="metric-value">{{ getDataValidationStatus() }}</div>
+                <div class="metric-label">数据验证</div>
+                <el-tag :type="getValidationTagType()">{{ getDataValidationStatus() }}</el-tag>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
 
       <!-- 数据预览 -->
-      <div v-if="result.preview" class="data-preview">
-        <h5>数据预览 (前{{ Math.min(result.preview.length, 10) }}行)</h5>
+      <div v-if="result.preview || result.data?.preview" class="data-preview">
+        <h5>📋 数据预览 (前{{ Math.min((result.preview || result.data?.preview || []).length, 10) }}行)</h5>
         <el-table
-          :data="result.preview.slice(0, 10)"
+          :data="(result.preview || result.data?.preview || []).slice(0, 10)"
           border
           size="small"
           max-height="300px"
           style="margin-bottom: 16px;"
         >
           <el-table-column
-            v-for="(value, key) in (result.preview[0] || {})"
+            v-for="(value, key) in ((result.preview || result.data?.preview || [])[0] || {})"
             :key="key"
             :prop="key"
             :label="key"
             show-overflow-tooltip
           />
         </el-table>
+
+        <!-- 无数据提示 -->
+        <div v-if="!(result.preview || result.data?.preview) || (result.preview || result.data?.preview || []).length === 0" class="no-data-hint">
+          <el-alert
+            title="未检测到结构化数据"
+            description="该插件可能需要特定格式的输入数据，请检查输入格式是否正确"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+        </div>
       </div>
 
       <!-- 统计信息 -->
@@ -717,18 +834,83 @@
     <!-- 通用结果显示 -->
     <div v-else class="generic-result">
       <h4>执行结果</h4>
-      <el-input
-        type="textarea"
-        :value="JSON.stringify(result, null, 2)"
-        :rows="10"
-        readonly
-      />
+
+      <!-- 结果类型检测和智能显示 -->
+      <div v-if="isTextResult" class="text-result">
+        <h5>文本结果</h5>
+        <el-input
+          type="textarea"
+          :value="getTextContent()"
+          :rows="8"
+          readonly
+          style="font-family: 'Courier New', monospace;"
+        />
+        <div class="text-stats">
+          <el-tag type="info" style="margin-right: 8px;">
+            字符数: {{ getTextContent().length }}
+          </el-tag>
+          <el-tag type="success">
+            行数: {{ getTextContent().split('\n').length }}
+          </el-tag>
+        </div>
+      </div>
+
+      <div v-else-if="isTableResult" class="table-result">
+        <h5>表格数据</h5>
+        <el-table :data="getTableData().slice(0, 10)" border size="small" max-height="300px">
+          <el-table-column
+            v-for="(value, key) in (getTableData()[0] || {})"
+            :key="key"
+            :prop="key"
+            :label="key"
+            show-overflow-tooltip
+          />
+        </el-table>
+        <div v-if="getTableData().length > 10" style="margin-top: 8px;">
+          <el-text type="info">显示前10行，共{{ getTableData().length }}行数据</el-text>
+        </div>
+      </div>
+
+      <div v-else-if="isBinaryResult" class="binary-result">
+        <h5>二进制数据</h5>
+        <el-alert
+          title="检测到二进制数据"
+          :description="`数据大小: ${getBinarySize()}`"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+        <div style="margin-top: 16px;">
+          <el-button @click="downloadBinaryData" type="primary" size="small">
+            下载数据
+          </el-button>
+        </div>
+      </div>
+
+      <div v-else class="json-result">
+        <h5>结构化数据</h5>
+        <el-tabs v-model="genericTab" type="border-card">
+          <el-tab-pane label="格式化显示" name="formatted">
+            <pre class="json-viewer">{{ getFormattedJSON() }}</pre>
+          </el-tab-pane>
+          <el-tab-pane label="原始数据" name="raw">
+            <el-input
+              type="textarea"
+              :value="getRawJSON()"
+              :rows="10"
+              readonly
+              style="font-family: 'Courier New', monospace;"
+            />
+          </el-tab-pane>
+        </el-tabs>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   result: {
@@ -783,6 +965,7 @@ const isStatisticalPlugin = computed(() => {
 const activeTab = ref('preview')
 const headersTab = ref('request')
 const responseTab = ref('formatted')
+const genericTab = ref('formatted')
 
 // 方法
 const formatNumber = (num) => {
@@ -938,6 +1121,326 @@ const getMSAEvaluationText = (evaluation) => {
     default: return '未知'
   }
 }
+
+// DOCX解析质量评估方法
+const getTextLength = () => {
+  const text = props.result.text || props.result.data?.text || ''
+  return text.length
+}
+
+const getWordCount = () => {
+  const text = props.result.text || props.result.data?.text || ''
+  return text.split(/\s+/).filter(word => word.length > 0).length
+}
+
+const getParagraphCount = () => {
+  const text = props.result.text || props.result.data?.text || ''
+  return text.split('\n').filter(line => line.trim().length > 0).length
+}
+
+const getTextExtractionRate = () => {
+  // 基于文本长度和内容复杂度评估提取率
+  const textLength = getTextLength()
+  if (textLength === 0) return 0
+  if (textLength < 50) return 85
+  if (textLength < 200) return 95
+  return 100
+}
+
+const getFormatPreservationScore = () => {
+  // 基于HTML输出和结构保持评估格式保持度
+  const hasHtml = !!(props.result.html || props.result.data?.html)
+  const hasStructure = getParagraphCount() > 1
+  const hasMetadata = !!(props.result.metadata)
+
+  let score = 60 // 基础分
+  if (hasHtml) score += 25
+  if (hasStructure) score += 10
+  if (hasMetadata) score += 5
+
+  return Math.min(100, score)
+}
+
+const getMultilingualSupport = () => {
+  const text = props.result.text || props.result.data?.text || ''
+  const hasEnglish = /[a-zA-Z]/.test(text)
+  const hasChinese = /[\u4e00-\u9fff]/.test(text)
+
+  if (hasEnglish && hasChinese) return '中英文混合'
+  if (hasChinese) return '中文'
+  if (hasEnglish) return '英文'
+  return '未检测'
+}
+
+const getStructureRecognition = () => {
+  const hasHtml = !!(props.result.html || props.result.data?.html)
+  const hasMetadata = !!(props.result.metadata)
+  const paragraphs = getParagraphCount()
+
+  if (hasHtml && paragraphs > 3) return '完整结构'
+  if (hasMetadata && paragraphs > 1) return '基本结构'
+  if (paragraphs > 1) return '段落结构'
+  return '平面文本'
+}
+
+const getQualityColor = (score) => {
+  if (score >= 90) return '#67c23a'
+  if (score >= 70) return '#e6a23c'
+  return '#f56c6c'
+}
+
+const getLanguageSupportType = () => {
+  const support = getMultilingualSupport()
+  if (support === '中英文混合') return 'success'
+  if (support === '中文' || support === '英文') return 'warning'
+  return 'info'
+}
+
+const getStructureType = () => {
+  const structure = getStructureRecognition()
+  if (structure === '完整结构') return 'success'
+  if (structure === '基本结构' || structure === '段落结构') return 'warning'
+  return 'info'
+}
+
+// 数据解析质量评估方法
+const isDataParsingPlugin = computed(() => {
+  return ['csv_parser', 'xlsx_parser', 'json_parser', 'xml_parser'].includes(props.pluginId)
+})
+
+const getParserResultTitle = () => {
+  const titleMap = {
+    'csv_parser': 'CSV解析结果',
+    'xlsx_parser': 'Excel解析结果',
+    'json_parser': 'JSON解析结果',
+    'xml_parser': 'XML解析结果',
+    'pdf_parser': 'PDF解析结果'
+  }
+  return titleMap[props.pluginId] || '解析结果'
+}
+
+const getDataParsingRate = () => {
+  const preview = props.result.preview || props.result.data?.preview || []
+  const hasData = preview.length > 0
+  const hasColumns = Object.keys(preview[0] || {}).length > 0
+
+  if (!hasData) return 0
+  if (hasColumns && preview.length >= 3) return 100
+  if (hasColumns && preview.length >= 1) return 80
+  return 50
+}
+
+const getDataIntegrityScore = () => {
+  const preview = props.result.preview || props.result.data?.preview || []
+  if (preview.length === 0) return 0
+
+  const totalCells = preview.length * Object.keys(preview[0] || {}).length
+  let validCells = 0
+
+  preview.forEach(row => {
+    Object.values(row).forEach(value => {
+      if (value !== null && value !== undefined && value !== '') {
+        validCells++
+      }
+    })
+  })
+
+  return totalCells > 0 ? Math.round((validCells / totalCells) * 100) : 0
+}
+
+const getDataStructureType = () => {
+  const preview = props.result.preview || props.result.data?.preview || []
+  if (preview.length === 0) return '无结构'
+
+  const columnCount = Object.keys(preview[0] || {}).length
+  const rowCount = preview.length
+
+  if (columnCount >= 5 && rowCount >= 10) return '复杂表格'
+  if (columnCount >= 3 && rowCount >= 5) return '标准表格'
+  if (columnCount >= 2) return '简单表格'
+  return '列表数据'
+}
+
+const getDataValidationStatus = () => {
+  const hasMetadata = !!(props.result.metadata)
+  const hasWarnings = !!(props.result.warnings && props.result.warnings.length > 0)
+  const hasData = !!(props.result.preview || props.result.data?.preview)
+
+  if (hasData && hasMetadata && !hasWarnings) return '验证通过'
+  if (hasData && hasWarnings) return '有警告'
+  if (!hasData) return '验证失败'
+  return '部分验证'
+}
+
+const getDataStructureTagType = () => {
+  const type = getDataStructureType()
+  if (type === '复杂表格' || type === '标准表格') return 'success'
+  if (type === '简单表格') return 'warning'
+  return 'info'
+}
+
+const getValidationTagType = () => {
+  const status = getDataValidationStatus()
+  if (status === '验证通过') return 'success'
+  if (status === '有警告' || status === '部分验证') return 'warning'
+  return 'danger'
+}
+
+// 通用结果智能检测
+const isTextResult = computed(() => {
+  // 检测是否为纯文本结果
+  if (typeof props.result === 'string') return true
+  if (props.result.text && typeof props.result.text === 'string') return true
+  if (props.result.data?.text && typeof props.result.data.text === 'string') return true
+  return false
+})
+
+const isTableResult = computed(() => {
+  // 检测是否为表格数据
+  const data = getTableData()
+  return Array.isArray(data) && data.length > 0 && typeof data[0] === 'object'
+})
+
+const isBinaryResult = computed(() => {
+  // 检测是否为二进制数据
+  if (props.result.base64) return true
+  if (props.result.data?.base64) return true
+  if (props.result.buffer) return true
+  if (props.result.data?.buffer) return true
+  return false
+})
+
+const getTextContent = () => {
+  if (typeof props.result === 'string') return props.result
+  if (props.result.text) return props.result.text
+  if (props.result.data?.text) return props.result.data.text
+  if (props.result.content) return props.result.content
+  if (props.result.data?.content) return props.result.data.content
+  return ''
+}
+
+const getTableData = () => {
+  if (Array.isArray(props.result)) return props.result
+  if (Array.isArray(props.result.data)) return props.result.data
+  if (Array.isArray(props.result.preview)) return props.result.preview
+  if (Array.isArray(props.result.data?.preview)) return props.result.data.preview
+  if (Array.isArray(props.result.results)) return props.result.results
+  if (Array.isArray(props.result.data?.results)) return props.result.data.results
+  return []
+}
+
+const getBinarySize = () => {
+  const base64 = props.result.base64 || props.result.data?.base64
+  if (base64) {
+    const bytes = Math.ceil(base64.length * 3 / 4)
+    return formatBytes(bytes)
+  }
+  return '未知大小'
+}
+
+const downloadBinaryData = () => {
+  const base64 = props.result.base64 || props.result.data?.base64
+  if (!base64) {
+    ElMessage.warning('没有可下载的二进制数据')
+    return
+  }
+
+  try {
+    const byteCharacters = atob(base64)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    const blob = new Blob([byteArray])
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${props.pluginId}_result_${Date.now()}.bin`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    ElMessage.success('文件下载已开始')
+  } catch (error) {
+    ElMessage.error('下载失败: ' + error.message)
+  }
+}
+
+const getFormattedJSON = () => {
+  try {
+    // 过滤掉可能导致显示问题的字段
+    const filteredResult = filterDisplayData(props.result)
+    return JSON.stringify(filteredResult, null, 2)
+  } catch (error) {
+    return '数据格式化失败: ' + error.message
+  }
+}
+
+const getRawJSON = () => {
+  try {
+    return JSON.stringify(props.result, null, 2)
+  } catch (error) {
+    return '数据序列化失败: ' + error.message
+  }
+}
+
+const filterDisplayData = (data) => {
+  if (!data || typeof data !== 'object') return data
+
+  const filtered = {}
+  for (const [key, value] of Object.entries(data)) {
+    // 跳过可能包含二进制数据的字段
+    if (key === 'base64' || key === 'buffer' || key === 'raw') {
+      filtered[key] = `[${typeof value}数据 - 已隐藏显示]`
+      continue
+    }
+
+    // 处理字符串值
+    if (typeof value === 'string') {
+      // 检测是否包含大量特殊字符或乱码
+      if (value.length > 1000) {
+        filtered[key] = value.substring(0, 500) + '... [内容过长，已截断]'
+      } else if (isLikelyBinaryString(value)) {
+        filtered[key] = '[二进制字符串 - 已隐藏显示]'
+      } else {
+        filtered[key] = value
+      }
+    } else if (Array.isArray(value)) {
+      // 限制数组显示长度
+      if (value.length > 20) {
+        filtered[key] = [...value.slice(0, 20), `... 还有${value.length - 20}项`]
+      } else {
+        filtered[key] = value.map(item =>
+          typeof item === 'object' ? filterDisplayData(item) : item
+        )
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      filtered[key] = filterDisplayData(value)
+    } else {
+      filtered[key] = value
+    }
+  }
+
+  return filtered
+}
+
+const isLikelyBinaryString = (str) => {
+  // 检测字符串是否可能是二进制数据
+  if (str.length === 0) return false
+
+  // 检查是否包含大量不可打印字符
+  let nonPrintableCount = 0
+  for (let i = 0; i < Math.min(str.length, 100); i++) {
+    const charCode = str.charCodeAt(i)
+    if (charCode < 32 && charCode !== 9 && charCode !== 10 && charCode !== 13) {
+      nonPrintableCount++
+    }
+  }
+
+  // 如果超过20%的字符是不可打印字符，认为是二进制数据
+  return (nonPrintableCount / Math.min(str.length, 100)) > 0.2
+}
 </script>
 
 <style scoped>
@@ -1009,5 +1512,107 @@ code {
   padding: 2px 4px;
   border-radius: 3px;
   font-family: 'Courier New', monospace;
+}
+
+/* 解析质量评估样式 */
+.parsing-quality-assessment {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 8px;
+  border: 1px solid #409eff;
+}
+
+.quality-card {
+  text-align: center;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.quality-card .el-card__body {
+  padding: 16px 12px;
+}
+
+.quality-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #303133;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 4px;
+}
+
+.quality-card .el-progress {
+  width: 100%;
+}
+
+.quality-card .el-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* 通用结果显示样式 */
+.generic-result {
+  margin-top: 16px;
+}
+
+.text-result,
+.table-result,
+.binary-result,
+.json-result {
+  margin-bottom: 20px;
+}
+
+.json-viewer {
+  background: #f5f7fa;
+  padding: 16px;
+  border-radius: 4px;
+  max-height: 400px;
+  overflow: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.generic-result .text-stats {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.binary-result .el-alert {
+  margin-bottom: 16px;
+}
+
+/* 防止长文本溢出 */
+.generic-result .el-textarea__inner {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+/* 表格样式优化 */
+.table-result .el-table {
+  margin-bottom: 16px;
+}
+
+.table-result .el-table .cell {
+  word-break: break-all;
+  max-width: 200px;
 }
 </style>

@@ -96,7 +96,7 @@
         <el-upload
           :http-request="uploadCaseExcel"
           :show-file-list="false"
-          accept=".xlsx,.xls"
+          :accept="acceptedFileTypes"
           style="margin: 0 8px;"
         >
           <el-button size="small" text>
@@ -230,6 +230,7 @@
               </div>
             </div>
 
+
             <!-- 分页控制 -->
             <div v-if="totalToolPages > 1" class="tools-pagination">
               <el-button
@@ -350,7 +351,116 @@
                 </div>
               </div>
 
-              <div class="message-text" v-html="formatMessage(message.content)"></div>
+              <div v-if="message.parsed" class="parsed-preview">
+                <div class="parsed-header">
+                  <el-tag type="info" size="small">{{ message.parsed.pluginId }}</el-tag>
+                  <!-- 表格型统计 -->
+                  <span v-if="isTabularParsed(message.parsed) && getParsedRowCount(message.parsed) !== null" class="parsed-meta">行：{{ getParsedRowCount(message.parsed) }}</span>
+                  <span v-if="isTabularParsed(message.parsed) && getParsedColumns(message.parsed).length" class="parsed-meta">列：{{ getParsedColumns(message.parsed).length }}</span>
+                  <span v-if="(message.parsed.res?.sheet_names||[]).length" class="parsed-meta">Sheet：{{ message.parsed.res.sheet_names.join(', ') }}</span>
+                  <!-- 文本型统计 -->
+                  <span v-if="hasTextParsed(message.parsed)" class="parsed-meta">字数：{{ getTextStats(message.parsed).chars }}</span>
+                  <span v-if="hasTextParsed(message.parsed) && getTextStats(message.parsed).paras !== null" class="parsed-meta">段落：{{ getTextStats(message.parsed).paras }}</span>
+                  <div class="parsed-actions">
+                    <el-button size="small" text @click="openParsedDialog(message.parsed)">展开全部</el-button>
+                    <el-button v-if="isTabularParsed(message.parsed)" size="small" text @click="exportParsedCSV(message.parsed)">导出CSV</el-button>
+                    <el-button v-if="hasTextParsed(message.parsed)" size="small" text @click="copyParsedText(message.parsed)">复制文本</el-button>
+                    <el-button v-if="hasTextParsed(message.parsed)" size="small" text @click="exportParsedText(message.parsed)">导出TXT</el-button>
+                    <el-button v-if="hasTextParsed(message.parsed)" size="small" text type="success" @click="exportParsedMarkdown(message.parsed)">导出MD</el-button>
+                    <el-button v-if="message.parsed" size="small" text type="primary" @click="copyBasicSummary(message.parsed)">复制汇总</el-button>
+                  </div>
+                </div>
+
+                <!-- 初步汇总（可折叠） -->
+                <el-collapse style="margin-top: 8px;">
+                  <el-collapse-item name="basic-summary">
+                    <template #title>
+                      <span style="font-weight: 600;">初步汇总</span>
+                    </template>
+                    <pre class="basic-summary-text">{{ stringifyBasicSummary(message.parsed.basicSummary || buildBasicSummary(message.parsed.res)) }}</pre>
+                  </el-collapse-item>
+                </el-collapse>
+
+                <div v-if="isTabularParsed(message.parsed)">
+                  <el-table :data="getParsedPreview(message.parsed, 10)" size="small" border style="width: 100%; margin-top: 6px;">
+                    <el-table-column v-for="col in getParsedColumns(message.parsed)" :key="col" :prop="col" :label="col" :min-width="100" />
+                  </el-table>
+                </div>
+                <template v-else>
+                  <div class="text-actions" style="margin-top:6px;">
+                    <el-input v-model="textPreviewQuery" size="small" placeholder="搜索/高亮原文" clearable style="width:260px" />
+                  </div>
+                  <div class="text-highlight compact" v-html="getTextPreviewHTML(message.parsed, textPreviewQuery, 1600)"></div>
+                </template>
+              </div>
+              <div v-else class="message-text" v-html="formatMessage(message.content)"></div>
+
+
+      <!-- 解析结果弹窗（多Tab） -->
+      <el-dialog v-model="parsedDialogVisible" title="解析结果" width="80%">
+        <el-tabs type="border-card">
+          <el-tab-pane label="概览">
+            <pre class="basic-summary-text">{{ stringifyBasicSummary(parsedDialogData?.basicSummary || buildBasicSummary(parsedDialogData?.res)) }}</pre>
+          </el-tab-pane>
+          <el-tab-pane label="预览">
+            <el-table v-if="isTabularParsed(parsedDialogData)" :data="getParsedPreview(parsedDialogData, 50)" size="small" border style="width: 100%">
+              <el-table-column v-for="col in getParsedColumns(parsedDialogData)" :key="col" :prop="col" :label="col" :min-width="120" />
+            </el-table>
+            <template v-else>
+              <div style="display:flex; gap:12px; align-items:flex-start;">
+                <div style="width:220px; flex: 0 0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:6px; padding:8px; max-height:50vh; overflow:auto;">
+                  <div v-if="dialogOutline.length" style="font-size:12px; color:#475569; margin-bottom:6px;">文档大纲</div>
+                  <el-empty v-else description="无识别到标题" :image-size="50" />
+                  <ul style="list-style:none; padding-left:0; margin:0;">
+                    <li v-for="(h,i) in dialogOutline" :key="h.id" :style="{ margin:'4px 0', paddingLeft: h.level===3 ? '0' : '12px' }">
+                      <a :href="'#'+h.id" :class="{active: h.id===activeHeadingId}" style="font-size:12px; text-decoration:none;">{{ h.title }}</a>
+                    </li>
+                  </ul>
+                </div>
+                <div style="flex:1 1 auto;">
+                  <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
+                    <el-input v-model="dialogTextQuery" size="small" placeholder="搜索/高亮原文" clearable style="width:260px" />
+                    <el-button size="small" @click="jumpToMark(false)" :disabled="!dialogTextQuery">上一处</el-button>
+                    <el-button size="small" @click="jumpToMark(true)" :disabled="!dialogTextQuery">下一处</el-button>
+                    <el-divider direction="vertical" />
+                    <el-button size="small" @click="dialogFontSize = Math.max(12, dialogFontSize - 1)">A-</el-button>
+                    <el-button size="small" @click="dialogFontSize = Math.min(18, dialogFontSize + 1)">A+</el-button>
+                    <el-switch v-model="dialogOnlyMatches" active-text="仅命中段落" :disabled="!dialogTextQuery" />
+                  </div>
+                  <div ref="dialogTextContainerRef" class="text-highlight" :style="{ fontSize: dialogFontSize + 'px' }" v-html="renderHighlightedText(getDialogDisplayText(), dialogTextQuery, true)"></div>
+                </div>
+              </div>
+            </template>
+          </el-tab-pane>
+          <el-tab-pane label="字段">
+            <el-table :data="(parsedDialogData?.basicSummary?.columns || buildBasicSummary(parsedDialogData?.res).columns)" size="small" border>
+              <el-table-column prop="name" label="列名" min-width="140" />
+              <el-table-column prop="type" label="类型" width="100" />
+              <el-table-column prop="missing" label="缺失" width="80" />
+              <el-table-column prop="unique" label="唯一" width="80" />
+              <el-table-column label="更多" min-width="260">
+                <template #default="{ row }">
+                  <span v-if="(row.min!==undefined && row.max!==undefined)">范围 {{row.min}} ~ {{row.max}}，均值 {{row.mean}}</span>
+                  <span v-else-if="row.start && row.end">起止 {{row.start}} ~ {{row.end}}</span>
+                  <span v-else-if="row.top && row.top.length">Top: {{ row.top.map(t=>`${t.value}(${t.count}${t.pct?`/${t.pct}%`:''})`).join('、') }}</span>
+                  <span v-else-if="row.text_len_max!==undefined">文本长度 均值 {{row.text_len_mean}}，最大 {{row.text_len_max}}</span>
+                  <span v-else>—</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane label="源数据">
+            <pre style="white-space: pre-wrap; max-height: 50vh; overflow: auto;">{{ (parsedDialogData?.res && (JSON.stringify(parsedDialogData.res, null, 2).slice(0, 4000) + (JSON.stringify(parsedDialogData.res).length>4000?'\n...（已截断）':''))) || '—' }}</pre>
+          </el-tab-pane>
+        </el-tabs>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="exportParsedCSV(parsedDialogData)" type="primary" plain>导出预览CSV</el-button>
+            <el-button @click="exportBasicSummaryCSV(parsedDialogData)" type="success" plain>导出初步汇总CSV</el-button>
+            <el-button @click="parsedDialogVisible=false">关闭</el-button>
+          </span>
+        </template>
+      </el-dialog>
 
               <div v-if="message.role === 'assistant' && message.model_info" class="message-meta">
                 <el-tag size="small">{{ message.model_info.provider }}</el-tag>
@@ -377,6 +487,10 @@
                   <el-icon><Delete /></el-icon>
                   没帮助
                 </el-button>
+                    <el-button v-if="message.role==='assistant' && message.rag_sources && message.rag_sources.length" size="small" text>
+                      引用来源：
+                      <el-tag v-for="(s, i) in message.rag_sources" :key="i" size="small" style="margin-left:4px">{{ s.title }}#{{ s.idx }} ({{ s.score }})</el-tag>
+                    </el-button>
                 <el-button size="small" text @click="copyMessage(message.content)">
                   <el-icon><CopyDocument /></el-icon>
                   复制
@@ -463,7 +577,7 @@
                       size="small"
                       text
                     >
-                      <el-icon><component :is="voiceEnabled ? 'VideoPlay' : 'Mute'" /></el-icon>
+                      <el-icon><component :is="voiceEnabled ? VideoPlay : Mute" /></el-icon>
                     </el-button>
                   </div>
                 </template>
@@ -510,6 +624,25 @@
                     >
                       发送
                     </el-button>
+                    <el-dropdown style="margin-left: 6px;">
+                      <el-button size="small" text>知识库<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item @click="toggleUseRAG">
+                            <el-checkbox v-model="useRag">结合知识作答</el-checkbox>
+                          </el-dropdown-item>
+                          <el-dropdown-item>
+                            范围
+                            <el-radio-group v-model="kbScope" size="small" style="margin-left: 8px;">
+                              <el-radio-button label="user">用户</el-radio-button>
+                              <el-radio-button label="session">会话</el-radio-button>
+                            </el-radio-group>
+                          </el-dropdown-item>
+                          <el-dropdown-item @click="ingestSelectedMessages">将选中消息入库</el-dropdown-item>
+                          <el-dropdown-item @click="openFileIngest">上传文件入库</el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
                   </div>
                 </template>
               </el-input>
@@ -563,10 +696,30 @@
             <div class="step-content">
               <div class="step-title">{{ step.title }}</div>
               <div class="step-description">{{ step.description }}</div>
+
               <div v-if="step.details" class="step-details">
                 <div v-for="detail in step.details" :key="detail" class="detail-item">
                   {{ detail }}
                 </div>
+
+	              <!-- 初步汇总（右侧看板简版，仅当有 latestBasicSummary 时展示） -->
+	              <div v-if="step.title==='初步汇总' && latestBasicSummary" class="step-details">
+	                <div class="detail-item" v-for="col in (latestBasicSummary.columns || []).slice(0,4)" :key="col.name">
+	                  <span>{{ col.name }} ({{ col.type }})</span>
+	                  <span style="color:#64748b;">
+	                    <template v-if="col.min!==undefined && col.max!==undefined">{{ col.min }} ~ {{ col.max }}</template>
+	                    <template v-else-if="col.start && col.end">{{ col.start }} ~ {{ col.end }}</template>
+	                    <template v-else-if="col.top && col.top.length">Top: {{ col.top.map(t=>`${t.value}(${t.count})`).join('、') }}</template>
+	                    <template v-else-if="col.text_len_max!==undefined">Len {{ col.text_len_mean }}/{{ col.text_len_max }}</template>
+	                    <template v-else>—</template>
+	                  </span>
+	                </div>
+	                <div class="detail-item" v-if="(latestBasicSummary.columns||[]).length>4">
+	                  <span>……</span>
+	                  <span>其余 {{ latestBasicSummary.columns.length - 4 }} 列</span>
+	                </div>
+	              </div>
+
               </div>
               <div v-if="step.duration" class="step-duration">
                 耗时: {{ step.duration }}ms
@@ -576,6 +729,8 @@
         </div>
 
         <!-- 执行统计 -->
+
+
         <div class="execution-stats" v-if="executionStats.totalSteps > 0">
           <div class="stats-header">执行统计</div>
           <div class="stats-grid">
@@ -631,25 +786,59 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ChatDotRound, User, Cpu, Tools, Document, Download, Plus, Upload,
-  StarFilled, CopyDocument, Loading, Promotion, Delete,
-  Monitor, TrendCharts, Refresh, FullScreen,
-  DocumentChecked, DataAnalysis, Warning, Search, Setting,
-  ChatLineRound, Grid, ArrowLeft, ArrowRight, Operation,
+  StarFilled, CopyDocument, Loading, Delete,
+  Refresh, FullScreen,
+  DocumentChecked,
+  ChatLineRound, ArrowLeft, ArrowRight, Operation,
   Microphone, Mute, VideoPlay, CircleCheck, CircleClose,
-  Picture, FolderOpened
+  Picture, ArrowDown
 } from '@element-plus/icons-vue'
 
 // 导入API
-import { sendChatMessage, getConversationList, getChatStatistics, importCaseExcel, getCaseGuidance, chatWithVision, searchCases } from '@/api/chat'
+import { sendChatMessage, getConversationList, getChatStatistics, getCaseGuidance, chatWithVision } from '@/api/chat'
 import axios from 'axios'
 
 // 导入组件
 import SmartRecommendations from '@/components/SmartRecommendations.vue'
+import cozeStudioAPI from '@/api/coze-studio'
+
+// RAG 控制与入库操作
+const useRag = ref(true)
+const kbScope = ref('user') // 'user' | 'session'
+
+function toggleUseRAG() {
+  useRag.value = !useRag.value
+  ElMessage.success(`结合知识作答：${useRag.value ? '开启' : '关闭'}`)
+}
+
+async function ingestSelectedMessages() {
+  if (!currentConversationId.value) {
+    ElMessage.info('请先选择或创建对话')
+    return
+  }
+  const N = 4
+  const recent = messages.value.slice(-N).map(m => ({ role: m.role, content: m.content }))
+  try {
+    await cozeStudioAPI.ingestFromMessages({
+      conversation_id: currentConversationId.value,
+      messages: recent,
+      saveScope: kbScope.value,
+      conversation_scope_id: kbScope.value === 'session' ? currentConversationId.value : undefined
+    })
+    ElMessage.success(`已将最近${N}条消息入库（${kbScope.value}）`)
+  } catch (e) {
+    ElMessage.error('入库失败：' + (e.response?.data?.message || e.message))
+  }
+}
+
+function openFileIngest() {
+  ElMessage.info('请使用顶部导入按钮上传文件，稍后将接入入库流程')
+}
 
 const router = useRouter()
 
@@ -672,6 +861,108 @@ const executionStats = ref({
   totalDuration: 0
 })
 
+const dialogTextQuery = ref('')
+const dialogTextContainerRef = ref(null)
+const currentMarkIndex = ref(-1)
+
+// 最近一次文件解析的初步汇总（用于右侧看板展示）
+const latestBasicSummary = ref(null)
+
+
+const textPreviewQuery = ref('')
+function escapeHtml(str=''){return String(str).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]))}
+function makeAnchorId(title, idx){
+  const base = String(title).trim().slice(0,40).replace(/\s+/g,'-').replace(/[^\w\-\u4e00-\u9fa5]/g,'') || 'section'
+  return `h${idx}-${base}`
+}
+function extractHeadings(text=''){
+  const lines = String(text).split('\n')
+  const out = []
+  const reMd1 = /^#\s(.*)$/
+  const reMd2 = /^##\s(.*)$/
+  const reCn = /^(第[一二三四五六七八九十百千0-9]+[章节条项])\s*(.*)$/
+  let idx = 0
+  for(const line of lines){
+    let m
+    if((m = line.match(reMd1))){ out.push({ level:3, title:m[1], id: makeAnchorId(m[1], ++idx) }); continue }
+    if((m = line.match(reMd2))){ out.push({ level:4, title:m[1], id: makeAnchorId(m[1], ++idx) }); continue }
+    if((m = line.match(reCn))){ const title = `${m[1]} ${m[2]||''}`; out.push({ level:4, title, id: makeAnchorId(title, ++idx) }); continue }
+  }
+  return out
+}
+function renderHighlightedText(text, keyword, withAnchors=false){
+  if(!text) return ''
+  let html = escapeHtml(text)
+  // 标题高亮：Markdown 和常见中文标题
+  let idx = 0
+  html = html
+    .replace(/^#\s(.*)$/gm, (_,t)=> withAnchors ? `<h3 id="${makeAnchorId(t, ++idx)}">${t}</h3>` : `<h3>${t}</h3>`)
+    .replace(/^##\s(.*)$/gm,(_,t)=> withAnchors ? `<h4 id="${makeAnchorId(t, ++idx)}">${t}</h4>` : `<h4>${t}</h4>`)
+    .replace(/^(第[一二三四五六七八九十百千0-9]+[章节条项])\s*(.*)$/gm,(_,a,b)=>{
+      const title = `${a} ${b||''}`
+      const id = withAnchors ? ` id=\"${makeAnchorId(title, ++idx)}\"` : ''
+      return `<h4${id}>${a}</h4><p>${b||''}</p>`
+    })
+  // 关键字高亮
+  if (keyword && keyword.trim()){
+    const safe = keyword.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')
+    const re = new RegExp(safe,'gi')
+    html = html.replace(re, m=>`<mark>${escapeHtml(m)}</mark>`)
+const activeHeadingId = ref('')
+let headingObserver = null
+function setupHeadingObserver(){
+  // 延迟到渲染完成后绑定
+  nextTick(()=>{
+    const box = dialogTextContainerRef.value
+    if(!box) return
+    // 清理旧的
+    if(headingObserver){ headingObserver.disconnect(); headingObserver = null }
+    const options = { root: box, rootMargin: '0px 0px -70% 0px', threshold: [0, 1.0] }
+    headingObserver = new IntersectionObserver((entries)=>{
+      // 选择最靠上的可见标题
+      const visible = entries.filter(e=>e.isIntersecting)
+      if(!visible.length) return
+      visible.sort((a,b)=> a.boundingClientRect.top - b.boundingClientRect.top)
+      const target = visible[0].target
+      activeHeadingId.value = target.id || ''
+    }, options)
+    box.querySelectorAll('h3,h4').forEach(el=> headingObserver.observe(el))
+  })
+}
+watch(()=>parsedDialogVisible.value, (v)=>{ if(v) setupHeadingObserver() })
+watch(()=>dialogTextQuery.value, ()=> setupHeadingObserver())
+
+const dialogOnlyMatches = ref(false)
+const dialogFontSize = ref(13)
+function getDialogDisplayText(){
+  const t = parsedDialogData?.value?.res?.text || ''
+  if(!dialogOnlyMatches.value || !dialogTextQuery.value?.trim()) return t
+  // 仅保留含关键词的段落：按空行区分
+  const blocks = t.split(/\n{2,}/)
+  const safe = dialogTextQuery.value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')
+  const re = new RegExp(safe,'i')
+  return blocks.filter(b=>re.test(b)).join('\n\n')
+}
+
+  }
+  // 换行 -> 段落
+  html = html.replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br/>')
+  return `<p>${html}</p>`
+}
+const dialogOutline = computed(()=>{
+  const text = parsedDialogData?.value?.res?.text || ''
+  return extractHeadings(text)
+})
+function jumpToMark(next=true){
+  const box = dialogTextContainerRef.value
+  if(!box) return
+  const marks = box.querySelectorAll('mark')
+  if(!marks.length) return
+  if(next){ currentMarkIndex.value = (currentMarkIndex.value + 1) % marks.length }
+  else { currentMarkIndex.value = (currentMarkIndex.value - 1 + marks.length) % marks.length }
+  marks[currentMarkIndex.value].scrollIntoView({ behavior:'smooth', block:'center' })
+}
+
 // 拖动相关数据
 const executionFlowRef = ref(null)
 const isDragging = ref(false)
@@ -687,8 +978,8 @@ const speechSynthesis = ref(null)
 // 文件上传相关数据
 const uploadedFiles = ref([])
 const uploadRef = ref(null)
-const acceptedFileTypes = ref('.pdf,.doc,.docx,.txt,.md,.jpg,.jpeg,.png,.gif,.bmp,.webp,.xls,.xlsx,.csv,.zip,.rar')
-const maxFileSize = ref(10 * 1024 * 1024) // 10MB
+const acceptedFileTypes = ref('.pdf,.doc,.docx,.txt,.md,.json,.xml,.jpg,.jpeg,.png,.gif,.bmp,.webp,.xls,.xlsx,.csv')
+const maxFileSize = ref(20 * 1024 * 1024) // 20MB
 const maxFileCount = ref(5) // 最多5个文件
 
 // 当前用户信息
@@ -1016,8 +1307,12 @@ const sendMessage = async () => {
   uploadedFiles.value = []
   isLoading.value = true
 
-  // 启动AI执行流程展示
-  simulateExecutionFlow(currentInput || '文件分析')
+  // 启动AI执行流程展示（根据是否包含文件选择流程）
+  if (currentFiles.length > 0) {
+    initializeFileExecutionFlow(currentFiles)
+  } else {
+    simulateExecutionFlow(currentInput || '智能问答')
+  }
 
   // 添加加载消息
   const loadingMessage = {
@@ -1031,10 +1326,26 @@ const sendMessage = async () => {
   try {
     const startTime = Date.now()
 
+
+    // 如果包含文件，则优先走“插件解析”流程并直接返回
+    if (currentFiles.length > 0) {
+      await processUploadedFiles(currentFiles, currentInput)
+      // 精确移除本次的加载消息（按对象引用定位）
+      const idx = messages.value.indexOf(loadingMessage)
+      if (idx !== -1) messages.value.splice(idx, 1)
+      isLoading.value = false
+      scrollToBottom()
+      return
+    }
+
     // 准备请求数据
+    // 确保会话ID一致，便于Traces聚合
+    if (!currentConversationId.value) {
+      currentConversationId.value = 'conv_' + Date.now()
+    }
     const requestData = {
       message: currentInput || '请分析上传的文件',
-      conversation_id: 'current_' + Date.now(),
+      conversation_id: currentConversationId.value,
       model: currentModel.value,
       files: currentFiles.map(file => ({
         name: file.name,
@@ -1042,6 +1353,54 @@ const sendMessage = async () => {
         size: file.size
       }))
     }
+
+    // 结合知识配置
+    requestData.use_rag = useRag.value
+    requestData.kb_scope = kbScope.value
+    // TODO: 如存在后端 agentId 适配，可按需传递
+
+
+async function processUploadedFiles(files, userPrompt){
+  // 仅处理首个文件，后续可扩展批量
+  const f = files[0]
+  const toBase64 = (file)=> new Promise((resolve,reject)=>{
+    const reader = new FileReader()
+    reader.onload = ()=> resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file.file)
+  })
+  const base64 = await toBase64(f)
+
+  // 调用 Coze Studio 文档解析工作流
+  const payload = {
+    input: {
+      file: { name: f.name, type: f.type, base64 },
+      query: userPrompt || ''
+    },
+    options: { summarize: true, stats: true, ingest_kb: false }
+  }
+  const resp = await cozeStudioAPI.executeDocumentParsingWorkflow(payload)
+  const ok = resp?.success !== false
+  if(!ok){ throw new Error(resp?.message || '解析失败') }
+  const parsed = resp?.data?.parsed || resp?.data || resp
+
+  // 将解析结果注入一条 assistant 消息
+  messages.value.push({
+    role: 'assistant',
+    content: '已完成文档解析。',
+    parsed,
+    timestamp: new Date(),
+    model_info: { provider: 'Document-Workflow' },
+    response_time: 0
+  })
+
+  // 更新右侧执行流程看板
+  if(Array.isArray(resp?.data?.steps)){
+    executionSteps.value = resp.data.steps.map((s,i)=>({ index:i+1, title:s.title, status:'completed', logs:[JSON.stringify(s.data)] }))
+    executionStats.value.completedSteps = resp.data.steps.length
+    executionStats.value.totalSteps = resp.data.steps.length
+  }
+}
 
     const response = await sendChatMessage(requestData)
 
@@ -1105,55 +1464,119 @@ const formatTime = (time) => {
 }
 
 // 文件处理方法
-const handleFileSelect = (file) => {
+const handleFileSelect = (uploadFile) => {
+  // 规范化 Element Plus 的回调入参（UploadFile），优先使用 raw File/Blob
+  const raw = uploadFile?.raw || uploadFile
+  const name = uploadFile?.name || raw?.name || '未命名文件'
+  const size = raw?.size ?? uploadFile?.size ?? 0
+  let type = raw?.type || ''
+
   // 检查文件数量限制
   if (uploadedFiles.value.length >= maxFileCount.value) {
     ElMessage.warning(`最多只能上传 ${maxFileCount.value} 个文件`)
     return false
   }
 
+  // 当浏览器未提供 MIME 时，按扩展名推断
+  if (!type && name.includes('.')) {
+    const ext = name.split('.').pop().toLowerCase()
+    const mimeMap = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      txt: 'text/plain',
+      md: 'text/markdown',
+      json: 'application/json',
+      xml: 'application/xml',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      webp: 'image/webp',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      csv: 'text/csv'
+    }
+    type = mimeMap[ext] || 'application/octet-stream'
+  }
+
   // 检查文件大小
-  if (file.size > maxFileSize.value) {
+  if (size > maxFileSize.value) {
     ElMessage.warning(`文件大小不能超过 ${formatFileSize(maxFileSize.value)}`)
     return false
   }
 
   // 检查文件类型
   const allowedTypes = [
+    // 文档
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
     'text/markdown',
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/gif',
-    'image/bmp',
-    'image/webp',
+    'application/json',
+    'application/xml',
+    'text/xml',
+    // 图片（OCR）
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp',
+    // 表格
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/csv',
-    'application/zip',
-    'application/x-rar-compressed'
+    'text/csv'
   ]
 
-  if (!allowedTypes.includes(file.type)) {
+  if (!allowedTypes.includes(type)) {
     ElMessage.warning('不支持的文件类型')
     return false
   }
 
-  // 添加文件到列表
+  // 添加文件到列表（保存原始 Blob 以便后续读取/上传）
   uploadedFiles.value.push({
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    file: file,
+    name,
+    size,
+    type,
+    file: raw,
     id: Date.now() + Math.random()
   })
 
-  ElMessage.success(`文件 "${file.name}" 上传成功`)
+  ElMessage.success(`文件 "${name}" 上传成功`)
   return false // 阻止自动上传
+}
+
+// 刷新右侧过程栏（Traces）
+const refreshTraces = async () => {
+  try {
+    if (!currentConversationId.value) return
+    const res = await cozeStudioAPI.getTraces({ conversation_id: currentConversationId.value, limit: 50 })
+    if (!res.success) return
+    const traces = res.data?.items || []
+    // 映射到界面步骤
+    const titleMap = {
+      parse: '解析文件/文本',
+      ingest_kb: '写入知识库',
+      search_kb: '检索知识片段',
+      case_guidance: '生成经验指导',
+      respond: '组装返回'
+    }
+    executionSteps.value = traces.map(t => ({
+      title: titleMap[t.category] || t.name || t.category,
+      description: t.input?.query ? `query: ${String(t.input.query).slice(0, 50)}` : '',
+      status: t.status === 'error' ? 'error' : 'completed',
+      details: [
+        t.output?.added ? `新增片段: ${t.output.added}` : '',
+        Array.isArray(t.output?.hits) ? `命中: ${t.output.hits.length}` : ''
+      ].filter(Boolean),
+      duration: null
+    }))
+    executionStats.value = {
+      totalSteps: executionSteps.value.length,
+      completedSteps: executionSteps.value.filter(s => s.status === 'completed').length,
+      totalDuration: executionSteps.value.reduce((a, b) => a + (b.duration || 0), 0)
+    }
+  } catch (e) {
+    console.warn('刷新Traces失败', e)
+  }
 }
 
 const removeFile = (index) => {
@@ -1161,6 +1584,300 @@ const removeFile = (index) => {
   uploadedFiles.value.splice(index, 1)
   ElMessage.info(`已移除文件 "${file.name}"`)
 }
+
+// === 文件解析：自动识别并调用插件 ===
+const detectPluginForFile = (file) => {
+  const type = (file.type || '').toLowerCase()
+  const name = (file.name || '').toLowerCase()
+  const ext = name.includes('.') ? name.split('.').pop() : ''
+  if (type.includes('pdf') || ext === 'pdf') return 'pdf_parser'
+  if (type.includes('word') || ext === 'docx' || ext === 'doc') return 'docx_parser'
+  if (type.includes('sheet') || type.includes('excel') || ext === 'xlsx' || ext === 'xls') return 'xlsx_parser'
+  if (ext === 'csv' || type.includes('csv')) return 'csv_parser'
+  if (ext === 'json' || type.includes('json')) return 'json_parser'
+  if (ext === 'xml' || type.includes('xml')) return 'xml_parser'
+  if (type.startsWith('image/') || ['jpg','jpeg','png','bmp','gif','webp'].includes(ext)) return 'ocr_reader'
+  return null
+}
+
+const fileToBase64 = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader()
+  r.onload = () => resolve(String(r.result).split(',').pop())
+  r.onerror = reject
+  r.readAsDataURL(blob)
+})
+
+const fileToText = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader()
+  r.onload = () => resolve(String(r.result))
+  r.onerror = reject
+  r.readAsText(blob)
+})
+
+// 初步数据汇总：在展示前基于解析结果做轻量统计（非分析）
+function guessBasicType(values = []) {
+  // 采样最多200条非空值
+  const sample = values.filter(v => v !== null && v !== undefined && v !== '').slice(0, 200)
+  if (sample.length === 0) return 'string'
+  const asNumber = sample.map(v => (typeof v === 'number' ? v : Number(String(v).replace(/,/g, ''))))
+  const numberRatio = asNumber.filter(v => !Number.isNaN(v) && Number.isFinite(v)).length / sample.length
+  if (numberRatio >= 0.7) {
+    const intRatio = asNumber.filter(v => Number.isInteger(v)).length / asNumber.length
+    return intRatio >= 0.9 ? 'integer' : 'number'
+  }
+  const asDate = sample.map(v => Date.parse(String(v)))
+  const dateRatio = asDate.filter(ts => !Number.isNaN(ts)).length / sample.length
+  if (dateRatio >= 0.7) return 'date'
+  const asBool = sample.map(v => String(v).toLowerCase().trim())
+  const boolRatio = asBool.filter(v => ['true','false','yes','no','0','1'].includes(v)).length / sample.length
+  if (boolRatio >= 0.7) return 'boolean'
+  return 'string'
+}
+
+function buildBasicSummary(res) {
+  // 1) 表格型（preview/rows）优先
+  let rows = Array.isArray(res?.preview) ? res.preview : (Array.isArray(res?.rows) ? res.rows : [])
+  // 2) 文本型（如 pdf/docx/ocr）：从 text 生成一行 content
+  if ((!rows || rows.length === 0) && typeof res?.text === 'string' && res.text.trim()) {
+    rows = [{ content: res.text }]
+  }
+  const rowCount = rows.length
+  const headers = rowCount > 0 ? Object.keys(rows[0]) : (res?.columns ? Object.keys(res.columns) : [])
+  const columnSummaries = headers.map(h => {
+    const vals = rows.map(r => r?.[h])
+    const missing = vals.filter(v => v === null || v === undefined || v === '').length
+    const present = vals.length - missing
+    const uniq = new Set(vals.filter(v => v !== null && v !== undefined && v !== '')).size
+    const type = guessBasicType(vals)
+    const example = vals.find(v => v !== null && v !== undefined && v !== '')
+    const info = { name: h, type, missing, unique: uniq, present }
+
+    if (type === 'integer' || type === 'number') {
+      const nums = vals.map(v => (typeof v === 'number' ? v : Number(String(v).replace(/,/g, '')))).filter(v => Number.isFinite(v))
+      if (nums.length) {
+        const min = Math.min(...nums), max = Math.max(...nums)
+        const mean = nums.reduce((a,b)=>a+b,0) / nums.length
+        info.min = min; info.max = max; info.mean = Number(mean.toFixed(2))
+      }
+    } else if (type === 'date') {
+      const ts = vals.map(v => Date.parse(String(v))).filter(v => !Number.isNaN(v))
+      if (ts.length) {
+        const min = new Date(Math.min(...ts)), max = new Date(Math.max(...ts))
+        info.start = min.toISOString().slice(0,19).replace('T',' ')
+        info.end = max.toISOString().slice(0,19).replace('T',' ')
+      }
+    } else if (type === 'boolean') {
+      const norm = vals.map(v => String(v).toLowerCase().trim())
+      const t = norm.filter(v => ['true','yes','1'].includes(v)).length
+      const f = norm.filter(v => ['false','no','0'].includes(v)).length
+      info.true = t; info.false = f
+    } else {
+      // 视为类别/文本：给出Top-N与占比
+      const freq = new Map()
+      vals.forEach(v => {
+        const k = (v === null || v === undefined || v === '') ? '' : String(v)
+        if (!k) return
+        freq.set(k, (freq.get(k) || 0) + 1)
+      })
+      const total = Array.from(freq.values()).reduce((a,b)=>a+b,0)
+      const top = Array.from(freq.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,c])=>({ value:k, count:c, pct: Number(((c/Math.max(total,1))*100).toFixed(1)) }))
+      if (top.length) {
+        info.top = top
+        const covered = top.reduce((a,t)=>a+t.count,0)
+        info.coverage_pct = Number(((covered/Math.max(total,1))*100).toFixed(1))
+      }
+      // 文本长度统计
+      const lengths = vals.map(v => (v === null || v === undefined) ? 0 : String(v).length)
+      if (lengths.length) {
+        const maxLen = Math.max(...lengths)
+        const meanLen = lengths.reduce((a,b)=>a+b,0) / lengths.length
+        info.text_len_max = maxLen
+        info.text_len_mean = Number(meanLen.toFixed(1))
+      }
+    }
+
+    return { ...info, example }
+  })
+  return { row_count: rowCount, column_count: headers.length, columns: columnSummaries }
+}
+
+function stringifyBasicSummary(summary, maxCols = 6) {
+  if (!summary) return '（无可汇总数据）'
+  const lines = [`初步汇总：${summary.row_count} 行 × ${summary.column_count} 列`]
+  const cols = (summary.columns || []).slice(0, maxCols)
+  cols.forEach(c => {
+    let extra = ''
+    if ((c.type === 'integer' || c.type === 'number') && typeof c.min === 'number') {
+      extra = `，范围 ${c.min} ~ ${c.max}，均值 ${c.mean}`
+    } else if (c.type === 'date' && c.start && c.end) {
+      extra = `，起止 ${c.start} ~ ${c.end}`
+    } else if (Array.isArray(c.top) && c.top.length) {
+      const head = `，Top${c.top.length}：` + c.top.map(t => `${t.value}(${t.count}/${t.pct}%)`).join('、')
+      const tail = (typeof c.coverage_pct === 'number') ? `，累计覆盖 ${c.coverage_pct}%` : ''
+      extra = head + tail
+    } else if (typeof c.text_len_max === 'number') {
+      extra = `，文本长度 均值 ${c.text_len_mean}，最大 ${c.text_len_max}`
+    }
+    const base = `- ${c.name} (${c.type})：缺失 ${c.missing}，唯一 ${c.unique}`
+    lines.push(base + extra)
+  })
+  if ((summary.columns || []).length > maxCols) {
+    lines.push(`… 其余 ${summary.columns.length - maxCols} 列已省略`)
+  }
+  return lines.join('\n')
+}
+
+
+const summarizePluginResult = (pluginId, data) => {
+  const payload = data?.result || data
+  // 统一兼容：后端返回 { success, result, ... }；也可能直接是结果对象
+  const res = payload && (payload.result || payload)
+  if (!res) return '未获取到解析结果'
+
+  // 小工具：将表格数据前几行渲染为文本表格
+  const renderTable = (rows = [], maxRows = 5) => {
+    const arr = Array.isArray(rows) ? rows.slice(0, maxRows) : []
+    if (arr.length === 0) return '（无可预览数据）'
+    const headers = Object.keys(arr[0] || {})
+    const line = (cols) => `| ${cols.join(' | ')} |`
+    const header = line(headers)
+    const sep = line(headers.map(() => '---'))
+    const body = arr.map(r => line(headers.map(h => String(r[h] ?? '')))).join('\n')
+    return `${header}\n${sep}\n${body}`
+  }
+
+  // 根据类型与插件生成更“真实”的解析输出
+  if (pluginId === 'pdf_parser' || res.type === 'pdf_content') {
+    const text = (res.text || '').trim()
+    const preview = text.slice(0, 800)
+    return `PDF解析成功（${res.pages || '?'}页）。\n内容预览：\n${preview}${text.length>800 ? '\n...（已截断）' : ''}`
+  }
+
+  if (pluginId === 'docx_parser' || res.type === 'docx_content') {
+    const text = (res.text || '').trim()
+    const preview = text.slice(0, 800)
+    return `DOCX解析成功。\n内容预览：\n${preview}${text.length>800 ? '\n...（已截断）' : ''}`
+  }
+
+  // 表格类：xlsx/csv/json/xml 返回统一结构：preview(数组)、columns、summary
+  if (pluginId === 'xlsx_parser' || res.type === 'xlsx') {
+    const rows = res.preview || res.rows || []
+    const stats = res.summary || {}
+    const headers = rows[0] ? Object.keys(rows[0]) : []
+    const table = renderTable(rows, 8)
+    return [
+      `Excel解析成功。列：${headers.join(', ') || '未知'}，预览行数：${rows.length}`,
+      '',
+      table,
+      '',
+      Object.keys(stats).length ? `列统计（示例）：${Object.keys(stats).slice(0,3).join(', ')}` : ''
+    ].filter(Boolean).join('\n')
+  }
+
+  if (pluginId === 'csv_parser' || res.type === 'csv') {
+    const rows = res.preview || res.rows || []
+    return `CSV解析成功。预览行数：${rows.length}\n\n${renderTable(rows, 8)}`
+  }
+
+  if (pluginId === 'json_parser' || res.type === 'json') {
+    const rows = res.preview || []
+    const keys = Object.keys(res.columns || {})
+    return `JSON解析成功。字段：${keys.slice(0,10).join(', ')}\n\n${renderTable(rows, 8)}`
+  }
+
+  if (pluginId === 'xml_parser' || res.type === 'xml') {
+    const rows = res.preview || []
+    return `XML解析成功。预览行数：${rows.length}\n\n${renderTable(rows, 8)}`
+  }
+
+  if (pluginId === 'ocr_reader' || res.type === 'ocr') {
+    const text = (res.text || '').trim()
+    const preview = text.slice(0, 800)
+    return `OCR识别成功。内容预览：\n${preview}${text.length>800 ? '\n...（已截断）' : ''}`
+  }
+
+  try { return JSON.stringify(res, null, 2).slice(0, 1200) } catch { return String(res) }
+}
+
+const processUploadedFiles = async (files, userInput) => {
+  for (const f of files) {
+    // Step 0: 文件类别识别
+    startStep(0, [`${f.name} (${f.type || 'unknown'})`])
+    const pluginId = detectPluginForFile(f)
+    finishStep(0, !!pluginId, [pluginId ? `识别为：${pluginId}` : '未识别到可用插件'])
+    if (!pluginId) {
+      messages.value.push({ role:'assistant', content:`暂不支持解析该格式：${f.name}`, timestamp:new Date() })
+      continue
+    }
+
+    // Step 1: 选择解析工具
+    startStep(1, [`匹配插件：${pluginId}`])
+    finishStep(1, true)
+
+    try {
+      // Step 2: 调用插件解析
+      startStep(2, ['准备读取数据'])
+      let input = {}
+      const raw = f.file || f.raw || f
+      if (['pdf_parser','docx_parser','xlsx_parser'].includes(pluginId)) {
+        input.base64 = await fileToBase64(raw)
+      } else if (['csv_parser','json_parser','xml_parser'].includes(pluginId)) {
+        input.text = await fileToText(raw)
+      } else if (pluginId === 'ocr_reader') {
+        input.base64 = await fileToBase64(raw)
+      }
+      const execRes = await cozeStudioAPI.executePlugin(pluginId, { input })
+      const ok = execRes?.success ?? execRes?.data?.success ?? true
+      const resObj = (execRes?.data?.result || execRes?.result || execRes?.data || null)
+      // 统计信息
+      const rows = resObj?.preview || resObj?.rows || []
+      const rowCount = resObj?.row_count ?? (Array.isArray(rows) ? rows.length : 0)
+      const cols = resObj?.columns_list ?? (rows[0] ? Object.keys(rows[0]) : [])
+      const sheets = Array.isArray(resObj?.sheet_names) ? resObj.sheet_names : []
+      finishStep(2, ok, [
+        ok ? `解析完成：行${rowCount} 列${cols.length}` : (execRes?.message || execRes?.error || '解析失败'),
+        sheets.length ? `工作表：${sheets.join(', ')}` : ''
+      ].filter(Boolean))
+      if (!ok) {
+        const msg = execRes?.message || execRes?.error || execRes?.data?.message || '未知错误'
+        messages.value.push({ role:'assistant', content:`解析失败（${f.name}）：${msg}` , timestamp:new Date() })
+        continue
+      }
+
+      // Step 3: 结构优化
+      startStep(3, ['生成结构化摘要与统计'])
+      const summary = summarizePluginResult(pluginId, execRes?.data || execRes)
+      const statKeys = resObj?.summary ? Object.keys(resObj.summary).slice(0,3) : []
+      finishStep(3, true, [
+        `摘要长度：${summary.length}`,
+        statKeys.length ? `列统计示例：${statKeys.join(', ')}` : ''
+      ].filter(Boolean))
+
+      // Step 4: 初步汇总（在展示之前）
+      startStep(4, ['整理基础统计'])
+      const basicSummary = buildBasicSummary(resObj)
+      latestBasicSummary.value = basicSummary
+      const basicSummaryText = stringifyBasicSummary(basicSummary)
+      finishStep(4, true, [`汇总列数：${basicSummary.column_count}`])
+
+      // Step 5: 注入聊天（先展示初步汇总，再展示预览/解析内容）
+      startStep(5)
+      messages.value.push({
+        role:'assistant',
+        content: `【文件解析】${f.name}\n使用插件：${pluginId}\n${basicSummaryText}\n\n—— 预览 ——\n${summary}`,
+        timestamp:new Date(),
+        plugin_info: { plugin_id: pluginId },
+        parsed: { pluginId, fileName: f.name, res: resObj, basicSummary }
+      })
+      finishStep(5, true, ['已输出至对话区'])
+    } catch (e) {
+      finishStep(2, false, [e.message])
+      messages.value.push({ role:'assistant', content:`解析失败（${f.name}）：${e.message}`, timestamp:new Date() })
+    }
+  }
+  scrollToBottom()
+}
+
 
 const clearAllFiles = () => {
   uploadedFiles.value = []
@@ -1194,17 +1911,34 @@ const getFileIcon = (fileType) => {
 // === 案例导入与经验指导 ===
 const uploadCaseExcel = async ({ file }) => {
   try {
-    const form = new FormData()
-    form.append('file', file)
-    // 根据文件名简单分类（可改为弹窗选择）
+    // 读取为 base64
+    const toBase64 = (f) => new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result).split(',').pop())
+      reader.onerror = reject
+      reader.readAsDataURL(f)
+    })
+    const base64 = await toBase64(file)
     const isIncoming = /来料|incoming/i.test(file.name)
-    form.append('category', isIncoming ? 'incoming' : 'manufacturing')
 
-    const res = await importCaseExcel(form)
+    // 执行“案例应用指导”工作流
+    const res = await cozeStudioAPI.executeCaseGuidanceWorkflow({
+      fileName: file.name,
+      fileType: file.type || 'application/octet-stream',
+      base64,
+      saveScope: kbScope.value,
+      conversation_id: currentConversationId.value,
+      query: inputMessage.value || undefined,
+      category: isIncoming ? 'incoming' : 'manufacturing'
+    })
+
     if (res.success) {
-      ElMessage.success(`案例导入成功：${res.data.count} 条`)
+      ElMessage.success('案例导入并执行工作流成功')
+      const guidance = res.data?.guidance
+      if (guidance) messages.value.push({ role: 'assistant', content: guidance.summary || '已生成指导', timestamp: Date.now() })
+      await refreshTraces()
     } else {
-      ElMessage.error('案例导入失败')
+      ElMessage.error('执行工作流失败')
     }
   } catch (e) {
     ElMessage.error('案例导入失败：' + (e.message || '网络错误'))
@@ -1244,25 +1978,31 @@ const handleCaseGuidance = async () => {
       return
     }
 
-    // 看板：初始化流程
-    initGuidanceFlow(queryText)
+    if (!currentConversationId.value) {
+      currentConversationId.value = 'conv_' + Date.now()
+    }
 
-    // Step 1 解析问题
-    let done = markStep(0, 'running', [queryText.slice(0, 50)])
     const category = /来料|供应商|IQC/.test(queryText) ? 'incoming' : 'manufacturing'
-    done()
 
-    // Step 2 检索历史案例
-    done = markStep(1, 'running')
-    const searchRes = await searchCases({ q: queryText, category, limit: 5 })
-    const topCases = (searchRes?.data || []).slice(0, 3)
-    done()
+    // 直接调用Coze工作流（无文件），后端会：search_kb→case_guidance→respond，并写入Traces
+    const res = await cozeStudioAPI.executeCaseGuidanceWorkflow({
+      query: queryText,
+      saveScope: kbScope.value,
+      conversation_id: currentConversationId.value,
+      category
+    })
 
-    // Step 3 生成经验指导
-    done = markStep(2, 'running')
-    const res = await getCaseGuidance({ query: queryText, category, limit: 8 })
-    const g = res.data?.guidance
-    done()
+    if (res.success) {
+      const guidance = res.data?.guidance
+      const kb_hits = res.data?.kb_hits || []
+      if (guidance) {
+        messages.value.push({ role: 'assistant', content: guidance.summary || '已生成指导', timestamp: Date.now(), rag_sources: kb_hits })
+      }
+      ElMessage.success('已生成经验指导')
+      await refreshTraces()
+    } else {
+      ElMessage.error('经验指导生成失败')
+    }
 
 
 // 图像理解（当消息包含图片时）
@@ -1507,7 +2247,7 @@ const initializeExecutionFlow = (userInput) => {
       description: '从知识库中检索相关信息',
       status: 'pending',
       details: [],
-      duration: null
+      duration: null,
     },
     {
       title: '信息整合',
@@ -1588,6 +2328,10 @@ const getStepDetails = (stepIndex, userInput) => {
     ],
     [
       `解析输入: "${userInput.substring(0, 30)}..."`,
+
+
+
+
       '识别关键词和实体',
       '确定问题类型: 质量管理咨询'
     ],
@@ -1675,23 +2419,177 @@ const onDrag = (e) => {
 
 const endDrag = (e) => {
   if (!isDragging.value) return
-
-  if (e) {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-
   isDragging.value = false
+  // 恢复样式
   document.body.style.userSelect = ''
-
-  if (executionFlowRef.value) {
-    executionFlowRef.value.style.cursor = 'grab'
-  }
-
-  // 移除全局事件监听器
+  if (executionFlowRef.value) executionFlowRef.value.style.cursor = 'grab'
+  // 移除事件监听
   document.removeEventListener('mousemove', onDrag)
   document.removeEventListener('mouseup', endDrag)
 }
+
+
+// 文件解析流程：初始化与打点（放在模拟流程定义之后，避免解析器冲突）
+function initializeFileExecutionFlow(files = []) {
+  const names = files.map(f => f.name).join(', ')
+  executionSteps.value = [
+    { title: '文件类别识别', description: `待识别：${names}`, status: 'pending', details: [], duration: null },
+    { title: '选择解析工具', description: '根据文件类型匹配插件', status: 'pending', details: [], duration: null },
+    { title: '调用插件解析', description: '读取数据并生成预览', status: 'pending', details: [], duration: null },
+    { title: '结构化摘要', description: '提取列名与预览、生成简要摘要', status: 'pending', details: [], duration: null },
+    { title: '初步汇总', description: '基础统计（行/列、缺失、唯一、范围）', status: 'pending', details: [], duration: null },
+    { title: '结果注入聊天', description: '输出解析结果消息', status: 'pending', details: [], duration: null },
+  ]
+  executionStats.value = { totalSteps: executionSteps.value.length, completedSteps: 0, totalDuration: 0 }
+}
+function startStep(i, extra = []) {
+  if (i >= executionSteps.value.length) return
+  executionSteps.value[i].status = 'running'
+  if (extra.length) executionSteps.value[i].details = extra
+  executionSteps.value[i]._t = Date.now()
+}
+function finishStep(i, ok = true, extra = []) {
+  if (i >= executionSteps.value.length) return
+  const d = Date.now() - (executionSteps.value[i]._t || Date.now())
+  executionSteps.value[i].duration = d
+  executionStats.value.totalDuration += d
+  if (extra.length) executionSteps.value[i].details = extra
+  executionSteps.value[i].status = ok ? 'completed' : 'error'
+  if (ok) executionStats.value.completedSteps++
+}
+
+// 解析结果展示：弹窗与导出
+const parsedDialogVisible = ref(false)
+const parsedDialogData = ref(null)
+function openParsedDialog(parsed) {
+  parsedDialogData.value = parsed
+  parsedDialogVisible.value = true
+}
+function getParsedColumns(parsed) {
+  const rows = (parsed?.res?.preview || parsed?.res?.rows || [])
+  if (rows.length > 0) return Object.keys(rows[0])
+  const cols = parsed?.res?.columns || {}
+  const keys = Object.keys(cols)
+  if (keys.length) return keys
+  if (typeof parsed?.res?.text === 'string' && parsed.res.text.trim()) return ['content']
+  return []
+}
+function getParsedPreview(parsed, limit = 20) {
+  const rows = (parsed?.res?.preview || parsed?.res?.rows)
+  if (Array.isArray(rows) && rows.length) return rows.slice(0, limit)
+  const cols = parsed?.res?.columns || {}
+  const keys = Object.keys(cols)
+  if (keys.length) {
+    const length = Math.min(limit, ...(keys.map(k => (Array.isArray(cols[k]) ? cols[k].length : 0)))) || 0
+    const output = []
+    for (let i = 0; i < length; i++) {
+      const row = {}
+      keys.forEach(k => { row[k] = Array.isArray(cols[k]) ? cols[k][i] : '' })
+      output.push(row)
+    }
+function detectTextType(parsed){
+  const t = String(parsed?.res?.type || '').toLowerCase()
+  const name = String(parsed?.fileName || '').toLowerCase()
+  if (t.includes('pdf') || name.endsWith('.pdf')) return 'pdf'
+  if (t.includes('docx') || t.includes('doc') || name.endsWith('.docx') || name.endsWith('.doc')) return 'docx'
+  if (t.includes('ocr') || t.includes('image')) return 'ocr'
+  return 'text'
+}
+function normalizeTextForType(type, text=''){
+  const s = String(text)
+  switch(type){
+    case 'pdf':
+      // 将单换行合并为空格，保留空行作为段落
+      return s.replace(/([^\n])\n(?!\n)/g, '$1 ')
+    default:
+      return s
+  }
+}
+function getParsedText(parsed){
+  const raw = parsed?.res?.text || ''
+  const type = detectTextType(parsed)
+  return normalizeTextForType(type, raw)
+}
+
+    return output
+  }
+  if (typeof parsed?.res?.text === 'string' && parsed.res.text.trim()) {
+    return [{ content: parsed.res.text.slice(0, 800) }]
+  }
+  return []
+}
+
+function exportParsedMarkdown(parsed){
+  const text = parsed?.res?.text || ''
+  if(!text){ ElMessage.info('无可导出的文本'); return }
+  const md = text
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href=url; a.download=(parsed?.fileName||'parsed')+'.md'; a.click(); URL.revokeObjectURL(url)
+}
+
+function getParsedRowCount(parsed) {
+  if (parsed?.res?.row_count !== undefined) return parsed.res.row_count
+  const arr = parsed?.res?.preview || parsed?.res?.rows
+  if (Array.isArray(arr)) return arr.length
+  if (typeof parsed?.res?.text === 'string' && parsed.res.text.trim()) return 1
+  return null
+}
+
+function isTabularParsed(parsed){
+  const rows = parsed?.res?.preview || parsed?.res?.rows
+  const cols = parsed?.res?.columns
+  return (Array.isArray(rows) && rows.length>0) || (cols && Object.keys(cols).length>0)
+}
+
+function hasTextParsed(parsed){
+  return typeof parsed?.res?.text === 'string' && parsed.res.text.trim().length>0
+}
+
+function copyParsedText(parsed){
+  try{
+    const t = parsed?.res?.text || ''
+    navigator.clipboard?.writeText(t)
+    ElMessage.success('已复制文本')
+  }catch(e){ ElMessage.error('复制失败') }
+}
+
+function exportParsedText(parsed){
+  const t = parsed?.res?.text || ''
+  const blob = new Blob([t], { type: 'text/plain;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href=url; a.download=(parsed?.fileName||'parsed')+'.txt'; a.click(); URL.revokeObjectURL(url)
+}
+
+function exportParsedCSV(parsed) {
+  const cols = getParsedColumns(parsed)
+  const rows = parsed?.res?.preview || parsed?.res?.rows || getParsedPreview(parsed, 1000)
+  const header = cols.join(',')
+  const body = rows.map(r => cols.map(c => String(r[c] ?? '').replace(/"/g, '""')).map(v => /,|"|\n/.test(v) ? `"${v}"` : v).join(',')).join('\n')
+  const csv = header + '\n' + body
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = (parsed?.fileName || 'parsed') + '.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function getTextStats(parsed){
+  const t = parsed?.res?.text || ''
+  const chars = t.length
+  if(!t.trim()) return { chars: 0, paras: null }
+  const paras = t.split(/\n{2,}/).filter(s=>s.trim().length>0).length
+  return { chars, paras }
+}
+
+function getTextPreviewHTML(parsed, keyword='', limit=1600){
+  const text = parsed?.res?.text || ''
+  const clipped = text.length>limit ? (text.slice(0, limit) + '\n...（已截断预览，点击“展开全部”查看）') : text
+  return renderHighlightedText(clipped, keyword)
+}
+
 
 const onWheel = (e) => {
   if (!executionFlowRef.value) return
@@ -1720,6 +2618,44 @@ onMounted(async () => {
   // 加载用户统计
   try {
     const statsResponse = await getChatStatistics()
+
+function copyBasicSummary(parsed) {
+  try {
+    const text = stringifyBasicSummary(parsed.basicSummary || buildBasicSummary(parsed.res))
+    navigator.clipboard?.writeText(text)
+    ElMessage.success('已复制初步汇总')
+  } catch (e) {
+    ElMessage.error('复制失败')
+  }
+}
+
+function exportBasicSummaryCSV(parsed) {
+  const sum = parsed.basicSummary || buildBasicSummary(parsed.res)
+  const header = ['列名','类型','缺失','唯一','示例','最小值','最大值','均值']
+  const lines = [header.join(',')]
+  ;(sum.columns||[]).forEach(c => {
+    const row = [
+      c.name,
+      c.type,
+      c.missing,
+      c.unique,
+      (c.example ?? '').toString().replace(/"/g,'""'),
+      c.min ?? '',
+      c.max ?? '',
+      c.mean ?? ''
+    ]
+    lines.push(row.map(v => /,|"|\n/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : v).join(','))
+  })
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = (parsed?.fileName || 'summary') + '_basic_summary.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出初步汇总CSV')
+}
+
     if (statsResponse.success) {
       userStats.value = statsResponse.data
     }
@@ -1959,6 +2895,23 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.parsed-preview .text-preview {
+  margin-top: 6px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.parsed-preview .text-block {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  color: #334155;
+  max-height: 240px;
+  overflow: auto;
 }
 
 .panel-header {
@@ -2265,6 +3218,17 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+.parsed-header{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.parsed-meta{ color:#64748b; font-size:12px; margin-left:4px; }
+.parsed-actions{ margin-left:auto; display:flex; gap:4px; }
+.basic-summary-text{ white-space:pre-wrap; font-size:12px; line-height:1.6; color:#334155; background:#fff; border:1px solid #e5e7eb; border-radius:6px; padding:10px 12px; }
+.text-actions{ display:flex; align-items:center; gap:8px; }
+.text-highlight{ background:#fff; border:1px solid #e5e7eb; border-radius:6px; padding:10px 12px; color:#334155; line-height:1.7; }
+.text-highlight.compact{ max-height:240px; overflow:auto; }
+.text-highlight h3{ font-size:14px; margin:12px 0 6px; color:#0f172a; }
+.text-highlight h4{ font-size:13px; margin:10px 0 4px; color:#1f2937; }
+.text-highlight mark{ background:#fef3c7; color:#111827; padding:0 2px; border-radius:2px; }
+
   font-size: 12px;
   opacity: 0.8;
 }

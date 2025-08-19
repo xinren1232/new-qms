@@ -108,7 +108,8 @@
         >
           <div class="card-header">
             <div class="agent-avatar">
-              <el-avatar :size="40" :src="agent.avatar">
+              <el-avatar v-if="agent.avatar" :size="40" :src="agent.avatar" />
+              <el-avatar v-else :size="40">
                 <el-icon><User /></el-icon>
               </el-avatar>
             </div>

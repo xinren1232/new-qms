@@ -250,6 +250,25 @@ export function executeWorkflow(id, data) {
   })
 }
 
+/** 文档解析场景工作流执行 */
+export function executeDocumentParsingWorkflow(payload){
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/workflows/document-parsing/execute`,
+    method: 'post',
+    data: payload
+  })
+}
+
+/** 通用工作流运行（按JSON定义） */
+export function runWorkflowDefinition(payload){
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/workflows/run`,
+    method: 'post',
+    data: payload
+  })
+}
+
+
 /**
  * 获取工作流执行状态
  * @param {string} executionId - 执行ID
@@ -313,6 +332,94 @@ export function searchKnowledge(id, data) {
     data
   })
 }
+
+
+/**
+ * 轻量知识入库 (M1)
+ * @param {Object} data
+ * @param {string} data.fileName
+ * @param {string} data.fileType - MIME 或简名，如 application/pdf, text, csv
+ * @param {string} [data.base64] - 文件Base64
+ * @param {string} [data.text] - 纯文本
+ * @param {string} [data.saveScope='user'] - 'user' | 'session'
+ * @param {string} [data.conversation_id]
+ */
+export function ingestKnowledge(data) {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/knowledge/ingest`,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 轻量知识检索 (M1)
+ * @param {Object} data
+ * @param {string} data.query
+ * @param {number} [data.top_k=3]
+ * @param {string} [data.kb_scope='user'] - 'user' | 'session'
+ * @param {string} [data.conversation_id]
+ */
+export function searchKnowledgeLite(data) {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/knowledge/search`,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 从对话消息入库到知识库
+ * @param {Object} data
+ * @param {string} data.conversation_id
+ * @param {Array<{role:string,content:string}>} data.messages
+ * @param {string} [data.saveScope='user']
+ * @param {string} [data.conversation_scope_id]
+ */
+export function ingestFromMessages(data) {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/knowledge/ingest-from-messages`,
+    method: 'post',
+    data
+  })
+}
+
+/** Traces: 追加执行过程记录 */
+export function appendTrace(data) {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/traces/append`,
+    method: 'post',
+    data
+  })
+}
+
+/** Traces: 获取执行过程记录 */
+export function getTraces(params) {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/traces`,
+    method: 'get',
+    params
+  })
+}
+
+
+/** 工作流：获取案例应用指导模板 */
+export function getCaseGuidanceWorkflowTemplate() {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/workflows/templates/case-guidance`,
+    method: 'get'
+  })
+}
+
+/** 工作流：执行案例应用指导 */
+export function executeCaseGuidanceWorkflow(data) {
+  return request({
+    url: `${COZE_STUDIO_BASE_URL}/workflows/case-guidance/execute`,
+    method: 'post',
+    data
+  })
+}
+
 
 // ================================
 // AutoGPT 自主规划 API
@@ -702,6 +809,7 @@ export default {
   getWorkflow,
   executeWorkflow,
   getWorkflowExecution,
+  executeDocumentParsingWorkflow,
 
   // Knowledge相关
   getKnowledgeBases,
@@ -721,6 +829,19 @@ export default {
   getCrews,
   executeCrewTask,
   getAgentRoles,
+
+  // Knowledge M1 轻量接口
+  ingestKnowledge,
+  searchKnowledgeLite,
+  ingestFromMessages,
+
+  // Traces 接口
+  appendTrace,
+  getTraces,
+
+  // Workflows
+  getCaseGuidanceWorkflowTemplate,
+  executeCaseGuidanceWorkflow,
 
   // LangChain Memory相关
   createAgentMemory,

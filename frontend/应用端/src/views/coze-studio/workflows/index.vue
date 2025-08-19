@@ -68,54 +68,7 @@
       </el-row>
     </div>
 
-    <!-- 工作流模板推荐 -->
-    <div v-if="showTemplates" class="templates-section">
-      <div class="section-header">
-        <h2>工作流模板</h2>
-        <el-button text @click="showTemplates = false">
-          <el-icon><Close /></el-icon>
-          收起
-        </el-button>
-      </div>
-      <div class="templates-grid">
-        <div
-          v-for="template in workflowTemplates"
-          :key="template.id"
-          class="template-card"
-          @click="createFromTemplate(template)"
-        >
-          <div class="template-preview">
-            <div class="preview-canvas">
-              <svg width="100%" height="80" viewBox="0 0 200 80">
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7"
-                    refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#409EFF" />
-                  </marker>
-                </defs>
-                <!-- 简化的工作流预览图 -->
-                <circle cx="30" cy="40" r="8" fill="#67C23A" />
-                <circle cx="100" cy="40" r="8" fill="#409EFF" />
-                <circle cx="170" cy="40" r="8" fill="#E6A23C" />
-                <line x1="38" y1="40" x2="92" y2="40" stroke="#409EFF"
-                  stroke-width="2" marker-end="url(#arrowhead)" />
-                <line x1="108" y1="40" x2="162" y2="40" stroke="#409EFF"
-                  stroke-width="2" marker-end="url(#arrowhead)" />
-              </svg>
-            </div>
-          </div>
-          <div class="template-info">
-            <h4>{{ template.name }}</h4>
-            <p>{{ template.description }}</p>
-            <div class="template-tags">
-              <el-tag v-for="tag in template.tags" :key="tag" size="small">
-                {{ tag }}
-              </el-tag>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- 工作流列表 -->
     <div class="workflows-grid">
@@ -208,6 +161,10 @@
         </div>
 
         <div class="workflow-actions">
+          <el-button size="small" @click.stop="previewWorkflow(workflow)">
+            <el-icon><View /></el-icon>
+            预览
+          </el-button>
           <el-button size="small" @click.stop="runWorkflow(workflow)">
             <el-icon><VideoPlay /></el-icon>
             运行
@@ -256,62 +213,7 @@
       </el-empty>
     </div>
 
-    <!-- 模板选择对话框 -->
-    <el-dialog
-      v-model="showTemplateDialog"
-      title="选择工作流模板"
-      width="800px"
-    >
-      <div class="template-selector">
-        <div class="template-categories">
-          <el-radio-group v-model="selectedTemplateCategory">
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="data-processing">数据处理</el-radio-button>
-            <el-radio-button label="content-generation">内容生成</el-radio-button>
-            <el-radio-button label="automation">自动化</el-radio-button>
-          </el-radio-group>
-        </div>
 
-        <div class="template-list">
-          <div
-            v-for="template in filteredTemplates"
-            :key="template.id"
-            class="template-item"
-            :class="{ active: selectedTemplate?.id === template.id }"
-            @click="selectedTemplate = template"
-          >
-            <div class="template-preview-small">
-              <svg width="60" height="40" viewBox="0 0 60 40">
-                <circle cx="15" cy="20" r="4" fill="#67C23A" />
-                <circle cx="30" cy="20" r="4" fill="#409EFF" />
-                <circle cx="45" cy="20" r="4" fill="#E6A23C" />
-                <line x1="19" y1="20" x2="26" y2="20" stroke="#409EFF" stroke-width="1" />
-                <line x1="34" y1="20" x2="41" y2="20" stroke="#409EFF" stroke-width="1" />
-              </svg>
-            </div>
-            <div class="template-details">
-              <h4>{{ template.name }}</h4>
-              <p>{{ template.description }}</p>
-              <div class="template-meta">
-                <el-tag size="small">{{ template.nodeCount }} 节点</el-tag>
-                <el-tag size="small" type="success">{{ template.usageCount }} 使用</el-tag>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <el-button @click="showTemplateDialog = false">取消</el-button>
-        <el-button
-          type="primary"
-          :disabled="!selectedTemplate"
-          @click="createFromSelectedTemplate"
-        >
-          使用此模板
-        </el-button>
-      </template>
-    </el-dialog>
 
     <!-- 版本管理对话框 -->
     <el-dialog
@@ -479,7 +381,7 @@
           </el-select>
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
         <el-button type="primary" @click="handleCreateWorkflow">创建</el-button>
@@ -503,7 +405,7 @@
             执行时间: {{ runResult.executionTime }}ms
           </div>
         </div>
-        
+
         <div class="result-content">
           <el-tabs>
             <el-tab-pane label="执行日志" name="logs">
@@ -522,6 +424,11 @@
               <pre class="output-content">{{ runResult.output }}</pre>
             </el-tab-pane>
           </el-tabs>
+    <!-- 预览抽屉：展示已实现的工作流与设计类型 -->
+    <el-drawer v-model="previewVisible" :with-header="false" size="70%">
+      <WorkflowDesignPreview :workflow="previewWorkflowData" />
+    </el-drawer>
+
         </div>
       </div>
     </el-dialog>
@@ -534,7 +441,6 @@ import { useRouter } from 'vue-router'
 import {
   Plus,
   Search,
-  Connection,
   Calendar,
   Timer,
   VideoPlay,
@@ -543,7 +449,7 @@ import {
   CopyDocument,
   Download,
   Delete,
-  Close,
+
   FolderOpened,
   Share,
   User,
@@ -551,9 +457,14 @@ import {
   DocumentAdd,
   Collection,
   Upload,
-  MagicStick
+  MagicStick,
+  View
 } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElMessage as message } from 'element-plus'
+import cozeStudioAPI from '@/api/coze-studio'
+import WorkflowDesignPreview from './components/WorkflowDesignPreview.vue'
+
+
 
 const router = useRouter()
 
@@ -565,11 +476,13 @@ const showCreateDialog = ref(false)
 const showRunDialog = ref(false)
 const showTemplateDialog = ref(false)
 const showVersionDialog = ref(false)
+
+// 预览
+const previewVisible = ref(false)
+const previewWorkflowData = ref({})
+
 const showShareDialog = ref(false)
-const showTemplates = ref(true)
 const selectedWorkflow = ref(null)
-const selectedTemplate = ref(null)
-const selectedTemplateCategory = ref('all')
 const shareActiveTab = ref('collaborate')
 const newCollaboratorEmail = ref('')
 const shareLink = ref('https://coze.example.com/workflow/share/abc123')
@@ -591,36 +504,7 @@ const runResult = reactive({
   output: ''
 })
 
-// 工作流模板数据
-const workflowTemplates = reactive([
-  {
-    id: 1,
-    name: '数据处理模板',
-    description: '标准的数据清洗和处理流程模板',
-    category: 'data-processing',
-    nodeCount: 5,
-    usageCount: 156,
-    tags: ['数据清洗', '验证', '转换']
-  },
-  {
-    id: 2,
-    name: '内容生成模板',
-    description: 'AI驱动的内容创作和优化流程',
-    category: 'content-generation',
-    nodeCount: 4,
-    usageCount: 89,
-    tags: ['AI生成', '内容优化', '多语言']
-  },
-  {
-    id: 3,
-    name: '自动化审批模板',
-    description: '智能审批和通知流程模板',
-    category: 'automation',
-    nodeCount: 6,
-    usageCount: 234,
-    tags: ['审批', '通知', '条件判断']
-  }
-])
+
 
 // 版本管理数据
 const workflowVersions = reactive([
@@ -656,6 +540,7 @@ const currentCollaborators = reactive([
     id: 1,
     name: '张三',
     email: 'zhang@example.com',
+
     avatar: '',
     role: 'admin'
   },
@@ -675,57 +560,26 @@ const currentCollaborators = reactive([
   }
 ])
 
-// 工作流列表
+// 工作流列表 - 只保留已实现的工作流
 const workflows = reactive([
   {
-    id: 1,
-    name: '订单处理流程',
-    description: '自动化处理订单信息，包括验证、库存检查和发货通知',
+    id: 'document-parsing-flow',
+    name: '文档解析流程',
+    description: '按文件类型选择解析器 → 归一化 → 文本摘要/表格统计 → 可选入库',
     status: 'running',
-    category: 'automation',
-    nodeCount: 8,
-    executionCount: 245,
-    avgExecutionTime: 1250,
-    version: '2.1',
-    successRate: '98%',
-    collaborators: [
-      { id: 1, name: '张三', email: 'zhang@example.com', role: 'editor' },
-      { id: 2, name: '李四', email: 'li@example.com', role: 'viewer' }
-    ],
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-20')
-  },
-  {
-    id: 2,
-    name: '内容生成工作流',
-    description: '基于模板和数据自动生成营销内容和社交媒体文案',
-    status: 'draft',
-    category: 'content-generation',
-    nodeCount: 5,
-    executionCount: 12,
-    avgExecutionTime: 2100,
-    version: '1.3',
-    successRate: '95%',
-    collaborators: [
-      { id: 3, name: '王五', email: 'wang@example.com', role: 'admin' }
-    ],
-    createdAt: new Date('2024-01-18'),
-    updatedAt: new Date('2024-01-19')
-  },
-  {
-    id: 3,
-    name: '数据清洗流程',
-    description: '清洗和标准化客户数据，去除重复项和无效信息',
-    status: 'stopped',
     category: 'data-processing',
-    nodeCount: 12,
-    executionCount: 89,
-    avgExecutionTime: 3500,
-    version: '1.0',
-    successRate: '92%',
-    collaborators: [],
+    nodeCount: 7,
+    executionCount: 156,
+    avgExecutionTime: 2800,
+    version: '2.0',
+    successRate: '96%',
+    collaborators: [
+      { id: 1, name: '系统管理员', email: 'admin@qms.com', role: 'admin' }
+    ],
     createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-22')
+    updatedAt: new Date('2024-01-22'),
+    implemented: true,
+    route: '/coze-studio/workflows/document-parsing'
   }
 ])
 
@@ -737,36 +591,64 @@ const filteredWorkflows = computed(() => {
       workflow.description.toLowerCase().includes(searchQuery.value.toLowerCase())
 
     const matchesStatus = !statusFilter.value || workflow.status === statusFilter.value
+
     const matchesCategory = !categoryFilter.value || workflow.category === categoryFilter.value
 
     return matchesSearch && matchesStatus && matchesCategory
   })
 })
 
-const filteredTemplates = computed(() => {
-  if (selectedTemplateCategory.value === 'all') {
-    return workflowTemplates
-  }
-  return workflowTemplates.filter(template =>
-    template.category === selectedTemplateCategory.value
-  )
-})
+
 
 // 方法
+// 预览相关方法
+function asWorkflowDefinition(wf) {
+  if (wf && wf.nodes) return wf
+  const n = Math.max(3, Math.min(6, wf?.nodeCount || 3))
+  const nodes = []
+  for (let i = 0; i < n; i++) {
+    const id = `n${i + 1}`
+    let type = 'condition'
+    if (i === 0) type = 'start'
+    else if (i === n - 1) type = 'end'
+    else if (i % 2 === 1) type = 'ai'
+    const name = (i === 0) ? '开始' : ((i === n - 1) ? '结束' : `步骤${i}`)
+    nodes.push({ id, name, type })
+  }
+  const connections = []
+  for (let i = 0; i < n - 1; i++) connections.push({ from: nodes[i].id, to: nodes[i + 1].id })
+  return { id: wf?.id, name: wf?.name, category: wf?.category, status: wf?.status, version: wf?.version, nodes, connections, executionCount: wf?.executionCount, successRate: wf?.successRate, updatedAt: wf?.updatedAt }
+}
+
+function previewWorkflow(wf) {
+  previewWorkflowData.value = asWorkflowDefinition(wf)
+  previewVisible.value = true
+}
+
 const openWorkflow = (workflow) => {
-  router.push(`/coze-plugins/workflows/${workflow.id}`)
+  // 如果是已实现的工作流，跳转到专用页面
+  if (workflow.implemented && workflow.route) {
+    router.push(workflow.route)
+  } else {
+    router.push(`/coze-plugins/workflows/${workflow.id}`)
+  }
 }
 
 const editWorkflow = (workflow) => {
-  router.push(`/coze-plugins/workflows/${workflow.id}/edit`)
+  // 如果是已实现的工作流，跳转到专用页面
+  if (workflow.implemented && workflow.route) {
+    router.push(workflow.route)
+  } else {
+    router.push(`/coze-plugins/workflows/${workflow.id}/edit`)
+  }
 }
 
 const runWorkflow = async (workflow) => {
   selectedWorkflow.value = workflow
-  
+
   // 模拟工作流执行
   const startTime = Date.now()
-  
+
   try {
     // 模拟执行过程
     runResult.logs = [
@@ -775,9 +657,9 @@ const runWorkflow = async (workflow) => {
       { id: 3, time: '00:00:03', level: 'info', message: '执行数据处理节点' },
       { id: 4, time: '00:00:05', level: 'success', message: '工作流执行完成' }
     ]
-    
+
     await new Promise(resolve => setTimeout(resolve, 2000))
-    
+
     runResult.success = true
     runResult.executionTime = Date.now() - startTime
     runResult.output = JSON.stringify({
@@ -788,10 +670,10 @@ const runWorkflow = async (workflow) => {
         details: '处理了156个数据项'
       }
     }, null, 2)
-    
+
     workflow.executionCount++
     showRunDialog.value = true
-    
+
   } catch (error) {
     runResult.success = false
     runResult.executionTime = Date.now() - startTime
@@ -870,7 +752,7 @@ const deleteWorkflow = async (workflow) => {
     await ElMessageBox.confirm('确定要删除这个工作流吗？此操作不可恢复。', '确认删除', {
       type: 'warning'
     })
-    
+
     const index = workflows.findIndex(w => w.id === workflow.id)
     if (index > -1) {
       workflows.splice(index, 1)
@@ -886,7 +768,7 @@ const handleCreateWorkflow = () => {
     ElMessage.warning('请输入工作流名称')
     return
   }
-  
+
   const newWorkflow = {
     id: Date.now(),
     name: createForm.name,
@@ -899,19 +781,19 @@ const handleCreateWorkflow = () => {
     createdAt: new Date(),
     updatedAt: new Date()
   }
-  
+
   workflows.push(newWorkflow)
   showCreateDialog.value = false
-  
+
   // 重置表单
   Object.assign(createForm, {
     name: '',
     description: '',
     category: ''
   })
-  
+
   ElMessage.success('工作流创建成功')
-  
+
   // 跳转到编辑页面
   router.push(`/coze-plugins/workflows/${newWorkflow.id}/edit`)
 }
@@ -938,38 +820,7 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString()
 }
 
-// 模板相关方法
-const createFromTemplate = (template) => {
-  selectedTemplate.value = template
-  showTemplateDialog.value = true
-}
 
-const createFromSelectedTemplate = () => {
-  if (!selectedTemplate.value) return
-
-  const newWorkflow = {
-    id: Date.now(),
-    name: `基于${selectedTemplate.value.name}的工作流`,
-    description: selectedTemplate.value.description,
-    status: 'draft',
-    category: selectedTemplate.value.category,
-    nodeCount: selectedTemplate.value.nodeCount,
-    executionCount: 0,
-    avgExecutionTime: 0,
-    version: '1.0',
-    successRate: '0%',
-    collaborators: [],
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-
-  workflows.push(newWorkflow)
-  showTemplateDialog.value = false
-  selectedTemplate.value = null
-
-  ElMessage.success('工作流创建成功')
-  router.push(`/coze-plugins/workflows/${newWorkflow.id}/edit`)
-}
 
 // 节点颜色生成
 const getNodeColor = (index) => {
@@ -1041,6 +892,9 @@ const copyShareLink = () => {
 
 
 
+
+
+
 // 更新创建命令处理
 const handleCreateCommand = (command) => {
   switch (command) {
@@ -1048,7 +902,7 @@ const handleCreateCommand = (command) => {
       showCreateDialog.value = true
       break
     case 'template':
-      showTemplateDialog.value = true
+      ElMessage.info('模板功能开发中...')
       break
     case 'import':
       ElMessage.info('导入功能开发中...')
@@ -1059,8 +913,22 @@ const handleCreateCommand = (command) => {
   }
 }
 
-onMounted(() => {
-  // 页面初始化
+onMounted(async () => {
+  // 加载已实现的工作流（存在则覆盖静态数据）
+  try {
+    const res = await cozeStudioAPI.getWorkflows({ page: 1, limit: 50 })
+    const list = res?.data?.list || res?.data || []
+    if (Array.isArray(list) && list.length) {
+      workflows.splice(0, workflows.length, ...list.map(w => ({
+        ...w,
+        nodeCount: w.nodeCount ?? (w.nodes?.length || 0),
+        updatedAt: w.updatedAt || new Date(),
+        successRate: w.successRate || w.success_rate || '—'
+      })))
+    }
+  } catch (e) {
+    console.warn('加载工作流列表失败，使用本地数据作为回退', e)
+  }
 })
 </script>
 
@@ -1167,6 +1035,17 @@ onMounted(() => {
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
+          }
+        }
+
+        // 强调模板卡样式
+        &.emphasis {
+          border: 1px solid #10B981;
+          box-shadow: 0 2px 10px rgba(16, 185, 129, 0.12);
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
           }
         }
       }

@@ -523,6 +523,8 @@ class PluginEcosystemManager {
    */
   async executePlugin(pluginId, input, options = {}) {
     console.log(`🔄 执行插件: ${pluginId}`);
+    console.log('📥 插件输入数据:', JSON.stringify(input, null, 2));
+    console.log('⚙️ 插件选项:', JSON.stringify(options, null, 2));
 
     try {
       let plugin = this.activePlugins.get(pluginId);
@@ -1578,6 +1580,7 @@ class PluginEcosystemManager {
 	    try {
 	      const XLSX = require('xlsx');
 	      let rows = [];
+      let sheetNames = [];
 
 	      // 优先处理 XLSX 文件
 	      if (input.base64) {
@@ -1611,7 +1614,22 @@ class PluginEcosystemManager {
 	        }
 	      }
 
-	      return this._tabularSummary(rows, 'xlsx');
+
+		      // 尝试补齐 sheet 名称信息
+		      if (sheetNames.length === 0) {
+		        try {
+		          if (input.base64) {
+		            const wb0 = XLSX.read(Buffer.from(input.base64, 'base64'), { type: 'buffer' });
+		            sheetNames = wb0.SheetNames || [];
+		          } else if (input.filePath) {
+		            const wb0 = XLSX.readFile(input.filePath);
+		            sheetNames = wb0.SheetNames || [];
+		          }
+		        } catch (e) { /* ignore */ }
+		      }
+
+	      const base = this._tabularSummary(rows, 'xlsx');
+      return { ...base, sheet_names: sheetNames, row_count: rows.length, columns_list: rows[0] ? Object.keys(rows[0]) : [] };
 	    } catch (e) {
 	      return { success: false, type: 'xlsx', message: 'XLSX解析失败: ' + e.message };
 	    }
