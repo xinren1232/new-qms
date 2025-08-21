@@ -4413,7 +4413,10 @@ app.post('/api/workflows/execute/document-parsing', authenticateUserOrAnonymous,
     // 如果插件解析失败或没有对应插件，使用简单文本处理
     if (!result.content) {
       if (inputData.type === 'text') {
-        result.content = inputData.text || '';
+        result.content = inputData.text || inputData.content || '';
+      } else if (inputData.content) {
+        // 直接使用content字段
+        result.content = inputData.content;
       } else if (inputData.base64) {
         try {
           const buffer = Buffer.from(inputData.base64, 'base64');
@@ -4423,13 +4426,48 @@ app.post('/api/workflows/execute/document-parsing', authenticateUserOrAnonymous,
         }
       }
 
-      result.metadata = {
-        fileName: inputData.name || 'unknown',
-        format: detectedFormat,
-        fileSize: inputData.size || 0,
-        parser: 'fallback_text'
-      };
-      result.parser = 'fallback_text';
+      // 如果有内容，尝试使用增强文本解析器
+      if (result.content && pluginId === 'text_parser') {
+        try {
+          const pluginInput = {
+            content: result.content,
+            name: inputData.name || 'text-document.txt'
+          };
+
+          const executionResult = await pluginEcosystem.executePlugin('text_parser', pluginInput, {});
+
+          if (executionResult && executionResult.success) {
+            result = {
+              content: executionResult.text || result.content,
+              rawContent: result.content,
+              structure: executionResult.structure,
+              metadata: {
+                ...executionResult.metadata,
+                fileName: inputData.name || 'text-document.txt',
+                format: detectedFormat,
+                fileSize: inputData.size || result.content.length,
+                parser: 'enhanced_text_parser'
+              },
+              summary: executionResult.summary,
+              keywords: executionResult.keywords,
+              parser: 'enhanced_text_parser'
+            };
+          }
+        } catch (enhancedError) {
+          console.warn('增强文本解析失败，使用基础处理:', enhancedError.message);
+        }
+      }
+
+      // 如果还没有设置metadata，使用默认值
+      if (!result.metadata) {
+        result.metadata = {
+          fileName: inputData.name || 'unknown',
+          format: detectedFormat,
+          fileSize: inputData.size || (result.content ? result.content.length : 0),
+          parser: 'fallback_text'
+        };
+        result.parser = 'fallback_text';
+      }
     }
 
     res.json({

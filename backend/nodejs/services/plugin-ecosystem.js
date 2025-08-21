@@ -1422,6 +1422,8 @@ class PluginEcosystemManager {
       // 处理不同输入类型
       if (input.text) {
         textContent = input.text;
+      } else if (input.content) {
+        textContent = input.content;
       } else if (input.base64) {
         const buffer = Buffer.from(input.base64, 'base64');
 
@@ -1440,6 +1442,73 @@ class PluginEcosystemManager {
 
       if (!textContent) {
         throw new Error('无法提取文本内容');
+      }
+
+      // 使用QMS文档解析器和智能内容格式化器
+      try {
+        const IntelligentContentFormatter = require('./intelligent-content-formatter');
+        const QMSDocumentParser = require('./qms-document-parser');
+
+        // 检查是否是QMS质量管理文档
+        const isQMSDocument = this.detectQMSDocument(textContent);
+
+        let finalContent = textContent;
+        let qmsAnalysis = null;
+
+        if (isQMSDocument) {
+          console.log('🎯 检测到QMS质量管理文档，使用专用解析器');
+          const qmsParser = new QMSDocumentParser();
+          finalContent = qmsParser.parseQMSDocument(textContent);
+          qmsAnalysis = {
+            stats: qmsParser.getDocumentStats(),
+            validation: qmsParser.validateDocumentCompleteness(),
+            structure: qmsParser.documentStructure
+          };
+        }
+
+        const formatter = new IntelligentContentFormatter({
+          enableSmartParagraphs: true,
+          enableTitleDetection: true,
+          enableListFormatting: true,
+          enableTableDetection: true
+        });
+
+        const formattedResult = await formatter.formatContent(finalContent, {
+          filename: input.name || 'text-document.txt',
+          parser: isQMSDocument ? 'qms-enhanced-text' : 'enhanced-text',
+          originalLength: textContent.length,
+          isQMSDocument
+        });
+
+        if (formattedResult.formattedContent) {
+          console.log(`✅ 使用${isQMSDocument ? 'QMS专用' : '增强'}文本格式化器成功`);
+
+          return {
+            success: true,
+            type: isQMSDocument ? 'qms_document_content' : 'enhanced_text_content',
+            text: formattedResult.formattedContent,
+            content: formattedResult.formattedContent, // 添加content字段
+            rawText: textContent,
+            rawContent: textContent, // 添加rawContent字段
+            structure: formattedResult.structure,
+            qmsAnalysis,
+            metadata: {
+              ...formattedResult.metadata,
+              encoding,
+              character_count: textContent.length,
+              line_count: textContent.split('\n').length,
+              word_count: textContent.split(/\s+/).filter(w => w.length > 0).length,
+              processing_time: Date.now() - startTime,
+              parser: isQMSDocument ? 'qms-enhanced-text' : 'enhanced-text',
+              isQMSDocument
+            },
+            summary: formatter.createSummary(formattedResult.formattedContent),
+            keywords: formatter.extractKeywords(formattedResult.formattedContent),
+            warnings: qmsAnalysis?.validation?.issues || []
+          };
+        }
+      } catch (formatterError) {
+        console.warn('⚠️ 增强文本格式化失败，使用基础处理:', formatterError.message);
       }
 
       // 内容分析
@@ -1552,6 +1621,37 @@ class PluginEcosystemManager {
     return 'utf-8'; // 默认UTF-8
   }
 
+  // 检测是否是QMS质量管理文档
+  detectQMSDocument(text) {
+    const qmsIndicators = [
+      // 8D问题解决法
+      /D[1-8][\s\.]*(.*)/,
+
+      // 5W2H分析法
+      /(What|Where|When|Who|Why|How|How\s+Much)[\s\(（]*(.*)/,
+
+      // 质量管理关键词
+      /问题描述|根本原因|临时措施|纠正措施|预防措施/,
+      /质量|管理|体系|流程|标准|规范|要求/,
+      /不合格|缺陷|偏差|异常|风险|控制/,
+      /FMEA|MSA|SPC|PDCA|DMAIC/,
+
+      // 项目管理格式
+      /项目|任务|目标|计划|执行|检查|改进/,
+      /时间[:：]|地点[:：]|人员[:：]|责任人[:：]/
+    ];
+
+    let matchCount = 0;
+    for (const pattern of qmsIndicators) {
+      if (pattern.test(text)) {
+        matchCount++;
+      }
+    }
+
+    // 如果匹配到3个或以上指标，认为是QMS文档
+    return matchCount >= 3;
+  }
+
   // 文本结构分析
   analyzeTextStructure(text) {
     const lines = text.split('\n');
@@ -1592,7 +1692,41 @@ class PluginEcosystemManager {
   }
 
   async executePDFParser(input = {}, config = {}) {
-    // 优先使用开源 pdf-parse；无依赖或失败则返回友好提示
+    // 尝试使用增强PDF解析器
+    try {
+      const EnhancedPDFParser = require('./enhanced-pdf-parser');
+      const enhancedParser = new EnhancedPDFParser();
+
+      if (input.buffer || input.base64 || input.filePath) {
+        let buffer = null;
+        if (input.base64) buffer = Buffer.from(input.base64, 'base64');
+        else if (input.buffer) buffer = Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer);
+        else if (input.filePath) buffer = await require('fs').promises.readFile(input.filePath);
+
+        if (buffer) {
+          const enhancedResult = await enhancedParser.parsePDF(buffer, input.filename || 'document.pdf');
+
+          if (enhancedResult.success) {
+            return {
+              success: true,
+              type: 'enhanced_pdf_content',
+              text: enhancedResult.content,
+              rawText: enhancedResult.rawContent,
+              pages: enhancedResult.pages,
+              structure: enhancedResult.structure,
+              metadata: enhancedResult.metadata,
+              summary: enhancedResult.summary,
+              keywords: enhancedResult.keywords,
+              warnings: []
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('增强PDF解析失败，使用基础解析器:', error.message);
+    }
+
+    // 降级到基础PDF解析
     const result = {
       success: true,
       type: 'pdf_content',
@@ -1601,7 +1735,8 @@ class PluginEcosystemManager {
       metadata: {
         title: (input.metadata && input.metadata.title) || '未命名文档',
         author: (input.metadata && input.metadata.author) || '未知',
-        created_date: (input.metadata && input.metadata.created_date) || new Date().toISOString().slice(0,10)
+        created_date: (input.metadata && input.metadata.created_date) || new Date().toISOString().slice(0,10),
+        parser: 'basic-pdf'
       },
       warnings: []
     };
@@ -1998,6 +2133,44 @@ class PluginEcosystemManager {
 	    const startTime = Date.now();
 
 	    try {
+	      // 尝试使用增强DOCX解析器
+	      try {
+	        const EnhancedDOCXParser = require('./enhanced-docx-parser');
+	        const enhancedParser = new EnhancedDOCXParser();
+
+	        if (input.buffer || input.base64 || input.filePath) {
+	          let buffer = null;
+	          if (input.base64) buffer = Buffer.from(input.base64, 'base64');
+	          else if (input.buffer) buffer = Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer);
+	          else if (input.filePath) buffer = await require('fs').promises.readFile(input.filePath);
+
+	          if (buffer) {
+	            const enhancedResult = await enhancedParser.parseDOCX(buffer, input.filename || 'document.docx');
+
+	            if (enhancedResult.success) {
+	              return {
+	                success: true,
+	                type: 'enhanced_docx_content',
+	                text: enhancedResult.content,
+	                rawText: enhancedResult.rawContent,
+	                html: enhancedResult.html,
+	                structure: enhancedResult.structure,
+	                tables: enhancedResult.tables,
+	                images: enhancedResult.images,
+	                styles: enhancedResult.styles,
+	                metadata: enhancedResult.metadata,
+	                summary: enhancedResult.summary,
+	                keywords: enhancedResult.keywords,
+	                warnings: []
+	              };
+	            }
+	          }
+	        }
+	      } catch (enhancedError) {
+	        console.warn('增强DOCX解析失败，使用基础解析器:', enhancedError.message);
+	      }
+
+	      // 降级到基础解析
 	      // 检查是否有mammoth库可用
 	      let hasMammoth = false;
 	      try {

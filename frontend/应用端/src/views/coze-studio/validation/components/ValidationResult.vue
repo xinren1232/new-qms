@@ -39,29 +39,67 @@
         </el-descriptions>
       </div>
 
-      <!-- 提取的文本内容 -->
-      <div v-if="result.text" class="pdf-content">
-        <h5>提取的文本内容</h5>
-        <el-input
-          type="textarea"
-          :value="result.text"
-          :rows="12"
-          readonly
-          placeholder="未提取到文本内容"
-          style="margin-bottom: 16px;"
-        />
+      <!-- 增强的文档内容显示 -->
+      <div v-if="result.text || result.data?.content" class="pdf-content">
+        <h5>文档解析结果</h5>
 
-        <!-- 文本统计 -->
-        <div class="text-stats">
-          <el-tag type="info" style="margin-right: 8px;">
-            字符数: {{ result.text.length }}
-          </el-tag>
-          <el-tag type="success" style="margin-right: 8px;">
-            行数: {{ result.text.split('\n').length }}
-          </el-tag>
-          <el-tag type="warning">
-            词数: {{ result.text.split(/\s+/).filter(word => word.length > 0).length }}
-          </el-tag>
+        <!-- 内容显示选项卡 -->
+        <el-tabs v-model="pdfContentTab" type="border-card">
+          <!-- 格式化显示 -->
+          <el-tab-pane label="格式化显示" name="formatted">
+            <div class="formatted-content" v-html="getFormattedContent()"></div>
+          </el-tab-pane>
+
+          <!-- 原始文本 -->
+          <el-tab-pane label="原始文本" name="raw">
+            <el-input
+              type="textarea"
+              :value="getRawContent()"
+              :rows="12"
+              readonly
+              placeholder="未提取到文本内容"
+              style="font-family: 'Courier New', monospace;"
+            />
+          </el-tab-pane>
+
+          <!-- 结构化视图 -->
+          <el-tab-pane label="结构化视图" name="structured" v-if="hasStructuredContent()">
+            <div class="structured-view">
+              <el-tree
+                :data="getStructuredData()"
+                :props="{ children: 'children', label: 'label' }"
+                default-expand-all
+                node-key="id"
+              >
+                <template #default="{ node, data }">
+                  <span class="tree-node">
+                    <el-icon v-if="data.type === 'title'"><Document /></el-icon>
+                    <el-icon v-else-if="data.type === 'list'"><List /></el-icon>
+                    <el-icon v-else><DocumentCopy /></el-icon>
+                    {{ data.label }}
+                  </span>
+                </template>
+              </el-tree>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+
+        <!-- 文档统计信息 -->
+        <div class="document-stats" style="margin-top: 16px;">
+          <el-descriptions :column="4" border size="small">
+            <el-descriptions-item label="字符数">
+              <el-tag type="info">{{ getRawContent().length }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="行数">
+              <el-tag type="success">{{ getRawContent().split('\n').length }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="段落数">
+              <el-tag type="warning">{{ getParagraphCount() }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="解析器">
+              <el-tag type="primary">{{ result.metadata?.parser || result.parser || 'PDF解析器' }}</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
         </div>
       </div>
 
@@ -966,6 +1004,7 @@ const activeTab = ref('preview')
 const headersTab = ref('request')
 const responseTab = ref('formatted')
 const genericTab = ref('formatted')
+const pdfContentTab = ref('formatted')
 
 // 方法
 const formatNumber = (num) => {
@@ -1441,6 +1480,71 @@ const isLikelyBinaryString = (str) => {
   // 如果超过20%的字符是不可打印字符，认为是二进制数据
   return (nonPrintableCount / Math.min(str.length, 100)) > 0.2
 }
+
+// PDF/文档解析相关方法
+const getRawContent = () => {
+  return props.result.text || props.result.data?.content || props.result.data?.rawContent || ''
+}
+
+const getFormattedContent = () => {
+  const content = props.result.data?.content || props.result.text || ''
+  if (!content) return '<p>暂无内容</p>'
+
+  // 将Markdown格式转换为HTML
+  return content
+    .replace(/### (.*)/g, '<h3 style="color: #409EFF; margin: 16px 0 8px 0;">$1</h3>')
+    .replace(/## (.*)/g, '<h2 style="color: #67C23A; margin: 20px 0 12px 0;">$1</h2>')
+    .replace(/#### (.*)/g, '<h4 style="color: #E6A23C; margin: 12px 0 6px 0;">$1</h4>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #F56C6C;">$1</strong>')
+    .replace(/\n\n/g, '</p><p style="margin: 8px 0; line-height: 1.6;">')
+    .replace(/^/, '<p style="margin: 8px 0; line-height: 1.6;">')
+    .replace(/$/, '</p>')
+}
+
+const hasStructuredContent = () => {
+  const content = getRawContent()
+  return content.includes('##') || content.includes('**') || content.includes('D1') || content.includes('What')
+}
+
+const getStructuredData = () => {
+  const content = getRawContent()
+  const lines = content.split('\n').filter(line => line.trim())
+  const structured = []
+  let id = 1
+
+  lines.forEach(line => {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('##')) {
+      structured.push({
+        id: id++,
+        label: trimmed.replace(/^#+\s*/, ''),
+        type: 'title',
+        children: []
+      })
+    } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+      structured.push({
+        id: id++,
+        label: trimmed.replace(/\*\*/g, ''),
+        type: 'key-info',
+        children: []
+      })
+    } else if (trimmed.match(/^[•\-\*]\s/)) {
+      structured.push({
+        id: id++,
+        label: trimmed.replace(/^[•\-\*]\s/, ''),
+        type: 'list',
+        children: []
+      })
+    }
+  })
+
+  return structured
+}
+
+const getParagraphCount = () => {
+  const content = getRawContent()
+  return content.split('\n\n').filter(p => p.trim()).length
+}
 </script>
 
 <style scoped>
@@ -1614,5 +1718,49 @@ code {
 .table-result .el-table .cell {
   word-break: break-all;
   max-width: 200px;
+}
+
+/* 格式化内容样式 */
+.formatted-content {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 16px;
+  background: #fafafa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+.formatted-content h2 {
+  border-bottom: 2px solid #67C23A;
+  padding-bottom: 8px;
+}
+
+.formatted-content h3 {
+  border-left: 4px solid #409EFF;
+  padding-left: 12px;
+}
+
+.formatted-content h4 {
+  border-left: 3px solid #E6A23C;
+  padding-left: 10px;
+}
+
+.structured-view {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.document-stats .el-descriptions {
+  background: #f8f9fa;
 }
 </style>

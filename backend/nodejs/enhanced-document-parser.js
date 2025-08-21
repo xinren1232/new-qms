@@ -6,6 +6,12 @@ const path = require('path');
 const xlsx = require('xlsx'); // Excel解析
 const pdfParse = require('pdf-parse'); // PDF解析
 
+// 增强解析器
+const IntelligentContentFormatter = require('./services/intelligent-content-formatter');
+const EnhancedPDFParser = require('./services/enhanced-pdf-parser');
+const EnhancedDOCXParser = require('./services/enhanced-docx-parser');
+const ContentPaginationManager = require('./services/content-pagination-manager');
+
 const app = express();
 const PORT = process.env.PORT || 3005;
 
@@ -25,6 +31,14 @@ app.get('/health', (req, res) => {
 });
 
 // 配置
+const enhancedPDFParser = new EnhancedPDFParser();
+const enhancedDOCXParser = new EnhancedDOCXParser();
+const contentPaginator = new ContentPaginationManager({
+  maxPageSize: 8000,
+  maxPreviewSize: 1500,
+  enableSearch: true,
+  enableLazyLoad: true
+});
 
 // 格式检测器
 class FormatDetector {
@@ -198,30 +212,77 @@ class ContentExtractor {
     }
   }
 
-  static async extractPDF(buffer) {
+  static async extractPDF(buffer, filename = 'document.pdf') {
+    try {
+      // 使用增强PDF解析器
+      const enhancedResult = await enhancedPDFParser.parsePDF(buffer, filename);
+
+      if (enhancedResult.success) {
+        console.log('✅ 使用增强PDF解析器成功');
+        return {
+          content: enhancedResult.content,
+          rawContent: enhancedResult.rawContent,
+          metadata: enhancedResult.metadata,
+          structure: enhancedResult.structure,
+          pages: enhancedResult.pages,
+          summary: enhancedResult.summary,
+          keywords: enhancedResult.keywords,
+          raw: { text: enhancedResult.rawContent }
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ 增强PDF解析失败，使用基础解析器:', error.message);
+    }
+
+    // 降级到基础解析
     const data = await pdfParse(buffer);
     return {
       content: data.text,
       metadata: {
         pages: data.numpages,
-        info: data.info
+        info: data.info,
+        parser: 'basic-pdf'
       },
       raw: data
     };
   }
 
-  static async extractWord(buffer) {
+  static async extractWord(buffer, filename = 'document.docx') {
     try {
-      // 尝试解析Word文档结构
-      const content = await this.parseWordDocument(buffer);
+      // 使用增强DOCX解析器
+      const enhancedResult = await enhancedDOCXParser.parseDOCX(buffer, filename);
 
+      if (enhancedResult.success) {
+        console.log('✅ 使用增强DOCX解析器成功');
+        return {
+          content: enhancedResult.content,
+          rawContent: enhancedResult.rawContent,
+          html: enhancedResult.html,
+          metadata: enhancedResult.metadata,
+          structure: enhancedResult.structure,
+          tables: enhancedResult.tables,
+          images: enhancedResult.images,
+          styles: enhancedResult.styles,
+          summary: enhancedResult.summary,
+          keywords: enhancedResult.keywords,
+          raw: { content: enhancedResult.rawContent }
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ 增强DOCX解析失败，使用基础解析器:', error.message);
+    }
+
+    // 降级到基础解析
+    try {
+      const content = await this.parseWordDocument(buffer);
       return {
         content,
         metadata: {
           docType: 'word',
           extractionMethod: 'enhanced',
           size: buffer.length,
-          encoding: 'utf8'
+          encoding: 'utf8',
+          parser: 'basic-docx'
         },
         raw: { content }
       };
@@ -236,7 +297,8 @@ class ContentExtractor {
         metadata: {
           docType: 'word',
           extractionMethod: 'fallback',
-          size: buffer.length
+          size: buffer.length,
+          parser: 'fallback-docx'
         },
         raw: { content }
       };
@@ -449,6 +511,24 @@ app.post('/api/workflows/execute/document-parsing', async (req, res) => {
     const extractionResult = await ContentExtractor.extract(buffer, filename, parserInfo);
     console.log('内容提取完成，长度:', extractionResult.content.length);
 
+    // 4. 内容分页处理
+    let paginationResult = null;
+    if (extractionResult.content && extractionResult.content.length > 2000) {
+      try {
+        paginationResult = await contentPaginator.paginateContent(
+          extractionResult.content,
+          {
+            filename,
+            format: formatInfo.format,
+            parser: parserInfo.parser
+          }
+        );
+        console.log(`📄 内容分页完成: ${paginationResult.totalPages}页`);
+      } catch (paginationError) {
+        console.warn('⚠️ 内容分页失败:', paginationError.message);
+      }
+    }
+
     // 返回结果
     const result = {
       success: true,
@@ -462,14 +542,24 @@ app.post('/api/workflows/execute/document-parsing', async (req, res) => {
           size: buffer.length,
           encoding: 'UTF-8',
           extractionTime: new Date().toISOString(),
-          confidence: formatInfo.confidence
+          confidence: formatInfo.confidence,
+          hasPagination: !!paginationResult
         },
-        structure: {
+        structure: extractionResult.structure || {
           paragraphs: extractionResult.content.split('\n\n').length,
           sentences: extractionResult.content.split(/[.!?。！？]/).length - 1,
           words: extractionResult.content.split(/\s+/).length,
           characters: extractionResult.content.length
-        }
+        },
+        pagination: paginationResult,
+        summary: extractionResult.summary,
+        keywords: extractionResult.keywords,
+        // 增强解析结果
+        ...(extractionResult.html && { html: extractionResult.html }),
+        ...(extractionResult.tables && { tables: extractionResult.tables }),
+        ...(extractionResult.images && { images: extractionResult.images }),
+        ...(extractionResult.styles && { styles: extractionResult.styles }),
+        ...(extractionResult.pages && { pages: extractionResult.pages })
       },
       message: '文档解析成功'
     };
@@ -481,6 +571,79 @@ app.post('/api/workflows/execute/document-parsing', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '文档解析失败: ' + error.message
+    });
+  }
+});
+
+// 分页内容API
+app.post('/api/paginated-content', async (req, res) => {
+  try {
+    console.log('📄 收到分页内容请求');
+
+    const { content, options = {} } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少内容参数'
+      });
+    }
+
+    // 创建分页管理器实例
+    const paginator = new ContentPaginationManager({
+      maxPageSize: options.maxPageSize || 8000,
+      maxPreviewSize: options.maxPreviewSize || 1500,
+      enableSearch: options.enableSearch !== false,
+      enableLazyLoad: options.enableLazyLoad !== false,
+      chunkByParagraph: options.chunkByParagraph !== false,
+      ...options
+    });
+
+    const result = await paginator.paginateContent(content, options.metadata || {});
+
+    res.json({
+      success: true,
+      data: result,
+      message: '内容分页成功'
+    });
+
+  } catch (error) {
+    console.error('❌ 分页处理失败:', error);
+    res.status(500).json({
+      success: false,
+      error: '分页处理失败: ' + error.message
+    });
+  }
+});
+
+// 搜索分页内容API
+app.post('/api/search-paginated-content', async (req, res) => {
+  try {
+    console.log('🔍 收到分页内容搜索请求');
+
+    const { query, pages } = req.body;
+
+    if (!query || !pages) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少查询参数或页面数据'
+      });
+    }
+
+    const paginator = new ContentPaginationManager();
+    const searchResult = paginator.searchContent(query, pages);
+
+    res.json({
+      success: true,
+      data: searchResult,
+      message: '搜索完成'
+    });
+
+  } catch (error) {
+    console.error('❌ 搜索失败:', error);
+    res.status(500).json({
+      success: false,
+      error: '搜索失败: ' + error.message
     });
   }
 });
