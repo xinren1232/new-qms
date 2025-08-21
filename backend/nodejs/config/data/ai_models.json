@@ -5,7 +5,7 @@
       "name": "GPT-4o",
       "model": "gpt-4o",
       "apiKey": "",
-      "baseURL": "https://api.openai.com/v1",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
       "maxTokens": 4096,
       "temperature": 0.7,
       "features": {
@@ -19,7 +19,7 @@
       "name": "O3",
       "model": "o3-mini",
       "apiKey": "",
-      "baseURL": "https://api.openai.com/v1",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
       "maxTokens": 4096,
       "temperature": 0.7,
       "features": {
@@ -33,7 +33,7 @@
       "name": "Gemini 2.5 Pro Thinking",
       "model": "gemini-2.5-pro-thinking",
       "apiKey": "",
-      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
       "maxTokens": 4096,
       "temperature": 0.7,
       "features": {
@@ -47,7 +47,7 @@
       "name": "Claude 3.7 Sonnet",
       "model": "claude-3-5-sonnet-20241022",
       "apiKey": "",
-      "baseURL": "https://api.anthropic.com",
+      "baseURL": "https://hk-intra-paas.transsion.com/tranai-proxy/v1",
       "maxTokens": 4096,
       "temperature": 0.7,
       "features": {

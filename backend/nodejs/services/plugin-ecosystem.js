@@ -209,6 +209,38 @@ class PluginEcosystemManager {
           }
         }
       },
+      'image_parser': {
+        id: 'image_parser',
+        name: '图像解析器',
+        description: '解析图像文件并提取元数据和内容',
+        type: 'document_processor',
+        category: 'document_processing',
+        capabilities: ['image_parsing', 'metadata_extraction', 'format_detection'],
+        config_schema: {
+          type: 'object',
+          properties: {
+            extract_metadata: { type: 'boolean', default: true },
+            auto_ocr: { type: 'boolean', default: true },
+            supported_formats: { type: 'array', items: { type: 'string' }, default: ['png', 'jpg', 'jpeg', 'bmp', 'gif'] }
+          }
+        }
+      },
+      'text_parser': {
+        id: 'text_parser',
+        name: '文本解析器',
+        description: '解析纯文本文件并进行编码检测和内容分析',
+        type: 'document_processor',
+        category: 'document_processing',
+        capabilities: ['text_parsing', 'encoding_detection', 'content_analysis'],
+        config_schema: {
+          type: 'object',
+          properties: {
+            detect_encoding: { type: 'boolean', default: true },
+            analyze_structure: { type: 'boolean', default: true },
+            extract_keywords: { type: 'boolean', default: false }
+          }
+        }
+      },
 
       // 数据分析插件 - 统一使用 data_analyzer 类型
       'statistical_analyzer': {
@@ -889,6 +921,12 @@ class PluginEcosystemManager {
         case 'docx_parser':
           result = await this.executeDOCXParser(input, plugin.config);
           break;
+        case 'image_parser':
+          result = await this.executeImageParser(input, plugin.config);
+          break;
+        case 'text_parser':
+          result = await this.executeTextParser(input, plugin.config);
+          break;
         default:
           throw new Error(`未实现的文档处理器: ${plugin.id}`);
       }
@@ -1296,6 +1334,263 @@ class PluginEcosystemManager {
     };
   }
 
+  // 图像解析器实现
+  async executeImageParser(input = {}, config = {}) {
+    const startTime = Date.now();
+
+    try {
+      let imageBuffer = null;
+      let imageInfo = {};
+
+      // 处理不同输入类型
+      if (input.base64) {
+        imageBuffer = Buffer.from(input.base64, 'base64');
+      } else if (input.buffer) {
+        imageBuffer = input.buffer;
+      } else if (input.filePath) {
+        const fs = require('fs');
+        imageBuffer = fs.readFileSync(input.filePath);
+      }
+
+      if (!imageBuffer) {
+        throw new Error('需要提供base64、buffer或filePath数据');
+      }
+
+      // 检测图像格式
+      const format = this.detectImageFormat(imageBuffer);
+
+      // 提取图像元数据
+      if (config.extract_metadata) {
+        imageInfo = await this.extractImageMetadata(imageBuffer, format);
+      }
+
+      let ocrResult = null;
+
+      // 自动OCR识别
+      if (config.auto_ocr) {
+        try {
+          ocrResult = await this.executeOCRReader({
+            base64: input.base64,
+            buffer: imageBuffer
+          }, {
+            languages: ['zh', 'en'],
+            confidence_threshold: 0.7
+          });
+        } catch (ocrError) {
+          console.warn('OCR识别失败:', ocrError.message);
+        }
+      }
+
+      return {
+        success: true,
+        type: 'image_content',
+        format: format,
+        text: ocrResult?.text || '',
+        metadata: {
+          ...imageInfo,
+          file_size: imageBuffer.length,
+          processing_time: Date.now() - startTime
+        },
+        ocr_result: ocrResult,
+        image_analysis: {
+          format: format,
+          size: imageBuffer.length,
+          estimated_dimensions: imageInfo.dimensions || { width: 'unknown', height: 'unknown' }
+        },
+        warnings: ocrResult?.warnings || []
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        type: 'image_error',
+        error: error.message,
+        processing_time: Date.now() - startTime,
+        warnings: ['图像解析失败，请检查输入格式']
+      };
+    }
+  }
+
+  // 文本解析器实现
+  async executeTextParser(input = {}, config = {}) {
+    const startTime = Date.now();
+
+    try {
+      let textContent = '';
+      let encoding = 'utf-8';
+
+      // 处理不同输入类型
+      if (input.text) {
+        textContent = input.text;
+      } else if (input.base64) {
+        const buffer = Buffer.from(input.base64, 'base64');
+
+        // 编码检测
+        if (config.detect_encoding) {
+          encoding = this.detectTextEncoding(buffer);
+        }
+
+        textContent = buffer.toString(encoding);
+      } else if (input.buffer) {
+        if (config.detect_encoding) {
+          encoding = this.detectTextEncoding(input.buffer);
+        }
+        textContent = input.buffer.toString(encoding);
+      }
+
+      if (!textContent) {
+        throw new Error('无法提取文本内容');
+      }
+
+      // 内容分析
+      let analysis = {};
+      if (config.analyze_structure) {
+        analysis = this.analyzeTextStructure(textContent);
+      }
+
+      // 关键词提取
+      let keywords = [];
+      if (config.extract_keywords) {
+        keywords = this.extractKeywords(textContent);
+      }
+
+      return {
+        success: true,
+        type: 'text_content',
+        text: textContent,
+        encoding: encoding,
+        metadata: {
+          character_count: textContent.length,
+          line_count: textContent.split('\n').length,
+          word_count: textContent.split(/\s+/).filter(w => w.length > 0).length,
+          processing_time: Date.now() - startTime
+        },
+        analysis: analysis,
+        keywords: keywords,
+        warnings: []
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        type: 'text_error',
+        error: error.message,
+        processing_time: Date.now() - startTime,
+        warnings: ['文本解析失败，请检查输入格式和编码']
+      };
+    }
+  }
+
+  // 图像格式检测
+  detectImageFormat(buffer) {
+    const signatures = {
+      'png': [0x89, 0x50, 0x4E, 0x47],
+      'jpg': [0xFF, 0xD8, 0xFF],
+      'jpeg': [0xFF, 0xD8, 0xFF],
+      'gif': [0x47, 0x49, 0x46],
+      'bmp': [0x42, 0x4D],
+      'webp': [0x52, 0x49, 0x46, 0x46]
+    };
+
+    for (const [format, signature] of Object.entries(signatures)) {
+      if (signature.every((byte, index) => buffer[index] === byte)) {
+        return format;
+      }
+    }
+
+    return 'unknown';
+  }
+
+  // 提取图像元数据
+  async extractImageMetadata(buffer, format) {
+    const metadata = {
+      format: format,
+      size: buffer.length,
+      created_at: new Date().toISOString()
+    };
+
+    // 简单的尺寸检测（针对常见格式）
+    try {
+      if (format === 'png' && buffer.length > 24) {
+        const width = buffer.readUInt32BE(16);
+        const height = buffer.readUInt32BE(20);
+        metadata.dimensions = { width, height };
+      } else if ((format === 'jpg' || format === 'jpeg') && buffer.length > 10) {
+        // JPEG尺寸检测较复杂，这里提供估算
+        metadata.dimensions = { width: 'estimated', height: 'estimated' };
+      }
+    } catch (e) {
+      metadata.dimensions = { width: 'unknown', height: 'unknown' };
+    }
+
+    return metadata;
+  }
+
+  // 文本编码检测
+  detectTextEncoding(buffer) {
+    // 简单的编码检测
+    const sample = buffer.slice(0, Math.min(1024, buffer.length));
+
+    // 检测BOM
+    if (sample.length >= 3 && sample[0] === 0xEF && sample[1] === 0xBB && sample[2] === 0xBF) {
+      return 'utf-8';
+    }
+    if (sample.length >= 2 && sample[0] === 0xFF && sample[1] === 0xFE) {
+      return 'utf-16le';
+    }
+    if (sample.length >= 2 && sample[0] === 0xFE && sample[1] === 0xFF) {
+      return 'utf-16be';
+    }
+
+    // 检测中文字符（简单启发式）
+    const text = sample.toString('utf-8');
+    const chineseRegex = /[\u4e00-\u9fff]/;
+    if (chineseRegex.test(text)) {
+      return 'utf-8';
+    }
+
+    return 'utf-8'; // 默认UTF-8
+  }
+
+  // 文本结构分析
+  analyzeTextStructure(text) {
+    const lines = text.split('\n');
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+
+    return {
+      line_count: lines.length,
+      word_count: words.length,
+      character_count: text.length,
+      paragraph_count: text.split(/\n\s*\n/).length,
+      has_headers: /^#+\s/.test(text), // Markdown headers
+      has_lists: /^\s*[-*+]\s/.test(text), // Lists
+      has_numbers: /\d+/.test(text),
+      has_chinese: /[\u4e00-\u9fff]/.test(text),
+      has_english: /[a-zA-Z]/.test(text)
+    };
+  }
+
+  // 关键词提取（简单实现）
+  extractKeywords(text, maxKeywords = 10) {
+    // 简单的关键词提取
+    const words = text.toLowerCase()
+      .replace(/[^\w\s\u4e00-\u9fff]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2);
+
+    // 词频统计
+    const frequency = {};
+    words.forEach(word => {
+      frequency[word] = (frequency[word] || 0) + 1;
+    });
+
+    // 排序并返回前N个
+    return Object.entries(frequency)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, maxKeywords)
+      .map(([word, count]) => ({ word, count }));
+  }
+
   async executePDFParser(input = {}, config = {}) {
     // 优先使用开源 pdf-parse；无依赖或失败则返回友好提示
     const result = {
@@ -1359,10 +1654,20 @@ class PluginEcosystemManager {
       try {
         const XLSX = require('xlsx');
         const buf = Buffer.from(input.base64, 'base64');
-        const workbook = XLSX.read(buf, { type: 'buffer' });
+        const workbook = XLSX.read(buf, {
+          type: 'buffer',
+          cellText: false,
+          cellDates: true,
+          raw: false,
+          codepage: 65001 // UTF-8编码
+        });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        rows = XLSX.utils.sheet_to_json(sheet, {
+          defval: '',
+          raw: false,
+          dateNF: 'yyyy-mm-dd'
+        });
       } catch (e) { console.warn('xlsx base64读取失败，回退', e.message); }
     }
 
@@ -1371,10 +1676,19 @@ class PluginEcosystemManager {
     if (input.filePath) {
       try {
         const XLSX = require('xlsx');
-        const workbook = XLSX.readFile(input.filePath);
+        const workbook = XLSX.readFile(input.filePath, {
+          cellText: false,
+          cellDates: true,
+          raw: false,
+          codepage: 65001 // UTF-8编码
+        });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        rows = XLSX.utils.sheet_to_json(sheet, {
+          defval: '',
+          raw: false,
+          dateNF: 'yyyy-mm-dd'
+        });
       } catch (e) {
         console.warn('xlsx读取失败，回退到CSV/数组', e.message);
       }
@@ -1585,11 +1899,30 @@ class PluginEcosystemManager {
 	      // 优先处理 XLSX 文件
 	      if (input.base64) {
 	        const buf = Buffer.from(input.base64, 'base64');
-	        const wb = XLSX.read(buf, { type: 'buffer' });
-	        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+	        const wb = XLSX.read(buf, {
+	          type: 'buffer',
+	          cellText: false,
+	          cellDates: true,
+	          raw: false,
+	          codepage: 65001 // UTF-8编码
+	        });
+	        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {
+	          defval: '',
+	          raw: false,
+	          dateNF: 'yyyy-mm-dd'
+	        });
 	      } else if (input.filePath) {
-	        const wb = XLSX.readFile(input.filePath);
-	        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+	        const wb = XLSX.readFile(input.filePath, {
+	          cellText: false,
+	          cellDates: true,
+	          raw: false,
+	          codepage: 65001 // UTF-8编码
+	        });
+	        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {
+	          defval: '',
+	          raw: false,
+	          dateNF: 'yyyy-mm-dd'
+	        });
 	      } else if (input.csv || input.text) {
 	        // 回退：处理 CSV 数据
 	        const text = (input.csv || input.text || '').toString();
@@ -2708,8 +3041,42 @@ class PluginEcosystemManager {
   generateSimulatedDOCXContent(input) {
     // 基于输入参数生成不同类型的模拟文档
     const documentTypes = {
+      'report': {
+        text: `X6532项目达成全包包装等手机屏幕印刷报告
+
+项目概述
+项目名称：X6532项目达成全包包装等手机屏幕印刷
+项目编号：QMS-2025-001
+报告日期：2025年1月15日
+负责部门：重庆工厂质量管理部
+
+一、项目背景
+本项目旨在实现X6532手机屏幕的全包装印刷工艺，确保产品质量符合行业标准。
+
+二、质量控制要点
+1. 印刷精度控制：±0.05mm
+2. 色彩一致性：ΔE≤2.0
+3. 附着力测试：≥5B级
+4. 耐磨性测试：≥4H
+
+三、检测结果
+经过严格的质量检测，产品各项指标均达到预期要求：
+- 印刷精度：±0.03mm（符合要求）
+- 色彩偏差：ΔE=1.2（符合要求）
+- 附着力：5B级（符合要求）
+- 耐磨性：4H（符合要求）
+
+四、质量改进建议
+1. 优化印刷工艺参数
+2. 加强过程监控
+3. 完善质量追溯体系
+
+五、结论
+X6532项目达成全包包装等手机屏幕印刷工艺已成功实施，产品质量稳定可靠，建议正式投产。`,
+        html: ''
+      },
       'manual': {
-        text: `操作手册
+        text: `质量管理系统操作手册
 
 第一章 系统概述
 本系统是一个质量管理系统，旨在帮助企业提升产品质量和管理效率。
@@ -2930,6 +3297,7 @@ class PluginEcosystemManager {
     let documentXml = '';
 
     // 简化的ZIP解析 - 查找document.xml的内容
+    // 使用binary编码查找文件结构，但用utf8读取XML内容
     const bufferStr = buffer.toString('binary');
 
     // 查找word/document.xml文件的开始位置
@@ -2947,7 +3315,9 @@ class PluginEcosystemManager {
         console.log('📄 查找XML结束位置:', xmlEnd);
 
         if (xmlEnd !== -1) {
-          documentXml = bufferStr.substring(xmlStart, xmlEnd + 13);
+          // 提取XML部分的buffer并用UTF-8解码
+          const xmlBuffer = buffer.slice(xmlStart, xmlEnd + 13);
+          documentXml = xmlBuffer.toString('utf8');
           console.log('📄 提取到XML长度:', documentXml.length);
         }
       }
@@ -3049,18 +3419,189 @@ class PluginEcosystemManager {
     return extractedText;
   }
 
-  // 解析document.xml并提取文本
+  // 解析document.xml并提取文本 - 增强版
   parseDocumentXml(xmlString) {
     let text = '';
 
     try {
       console.log('📄 开始解析XML，长度:', xmlString.length);
 
-      // 使用正则表达式提取<w:t>标签中的文本
-      const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-      let match;
-      let textCount = 0;
+      // 增强的文本提取 - 处理多种文本元素
+      text = this.extractTextFromDocumentXml(xmlString);
 
+      console.log('📄 提取到文本长度:', text.length);
+      console.log('📄 文本预览:', text.substring(0, 200));
+
+      return text;
+
+    } catch (error) {
+      console.error('📄 XML解析失败:', error);
+      // 降级到简单文本提取
+      return this.extractSimpleText(xmlString);
+    }
+  }
+
+  // 增强的文本提取方法
+  extractTextFromDocumentXml(xmlString) {
+    let text = '';
+    let paragraphs = [];
+
+    // 1. 提取段落 <w:p>
+    const paragraphPattern = /<w:p[^>]*>(.*?)<\/w:p>/gs;
+    let paragraphMatch;
+
+    while ((paragraphMatch = paragraphPattern.exec(xmlString)) !== null) {
+      const paragraphXml = paragraphMatch[1];
+      const paragraphText = this.extractParagraphText(paragraphXml);
+
+      if (paragraphText.trim()) {
+        paragraphs.push(paragraphText.trim());
+      }
+    }
+
+    // 2. 如果没有找到段落，尝试直接提取文本
+    if (paragraphs.length === 0) {
+      const directText = this.extractDirectText(xmlString);
+      if (directText.trim()) {
+        paragraphs.push(directText.trim());
+      }
+    }
+
+    // 3. 组合段落
+    text = paragraphs.join('\n\n');
+
+    // 4. 清理和格式化
+    text = this.cleanExtractedText(text);
+
+    return text;
+  }
+
+  // 提取段落中的文本
+  extractParagraphText(paragraphXml) {
+    let paragraphText = '';
+
+    // 提取运行 <w:r> 中的文本
+    const runPattern = /<w:r[^>]*>(.*?)<\/w:r>/gs;
+    let runMatch;
+
+    while ((runMatch = runPattern.exec(paragraphXml)) !== null) {
+      const runXml = runMatch[1];
+      const runText = this.extractRunText(runXml);
+      paragraphText += runText;
+    }
+
+    // 如果没有找到运行，直接提取文本节点
+    if (!paragraphText.trim()) {
+      paragraphText = this.extractDirectText(paragraphXml);
+    }
+
+    return paragraphText;
+  }
+
+  // 提取运行中的文本
+  extractRunText(runXml) {
+    let runText = '';
+
+    // 提取文本节点 <w:t>
+    const textPattern = /<w:t[^>]*>(.*?)<\/w:t>/gs;
+    let textMatch;
+
+    while ((textMatch = textPattern.exec(runXml)) !== null) {
+      if (textMatch[1]) {
+        // 解码XML实体并修复编码
+        let textContent = this.decodeXmlEntities(textMatch[1]);
+        textContent = this.fixTextEncoding(textContent);
+        runText += textContent;
+      }
+    }
+
+    // 处理制表符 <w:tab/>
+    runText = runText.replace(/<w:tab\s*\/>/g, '\t');
+
+    // 处理换行 <w:br/>
+    runText = runText.replace(/<w:br\s*\/>/g, '\n');
+
+    return runText;
+  }
+
+  // 直接提取文本（降级方法）
+  extractDirectText(xmlString) {
+    let text = '';
+
+    // 提取所有 <w:t> 标签中的文本
+    const textPattern = /<w:t[^>]*>(.*?)<\/w:t>/gs;
+    let match;
+
+    while ((match = textPattern.exec(xmlString)) !== null) {
+      if (match[1]) {
+        // 解码XML实体并修复编码
+        let textContent = this.decodeXmlEntities(match[1]);
+        textContent = this.fixTextEncoding(textContent);
+        text += textContent + ' ';
+      }
+    }
+
+    // 如果没有找到w:t标签，尝试更宽泛的提取
+    if (!text.trim()) {
+      console.log('📄 未找到w:t标签，尝试宽泛提取');
+      const allTextMatches = xmlString.match(/>([^<]+)</g);
+      if (allTextMatches) {
+        for (const textMatch of allTextMatches) {
+          const content = textMatch.replace(/^>/, '').replace(/<$/, '').trim();
+          if (content && content.length > 1 && !content.match(/^[a-zA-Z]+$/)) {
+            let textContent = this.decodeXmlEntities(content);
+            textContent = this.fixTextEncoding(textContent);
+            text += textContent + ' ';
+          }
+        }
+      }
+    }
+
+    return text;
+  }
+
+  // 清理提取的文本
+  cleanExtractedText(text) {
+    if (!text) return '';
+
+    console.log('📄 开始清理文本，原始长度:', text.length);
+
+    // 1. 处理编码问题 - 增强的编码修复
+    try {
+      text = this.fixTextEncoding(text);
+    } catch (e) {
+      console.log('📄 编码转换失败，使用原始文本:', e.message);
+    }
+
+    // 2. 解码XML实体
+    text = text
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+
+    // 3. 清理多余的空白
+    text = text
+      .replace(/\s+/g, ' ')  // 多个空格合并为一个
+      .replace(/\n\s+/g, '\n')  // 清理行首空格
+      .replace(/\s+\n/g, '\n')  // 清理行尾空格
+      .replace(/\n{3,}/g, '\n\n');  // 多个换行合并为两个
+
+    // 4. 清理首尾空白
+    text = text.trim();
+
+    return text;
+  }
+
+  // 简单文本提取（最后的降级方法）
+  extractSimpleText(xmlString) {
+    const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let match;
+    let text = '';
+    let textCount = 0;
+
+    try {
       while ((match = textPattern.exec(xmlString)) !== null) {
         if (match[1]) {
           text += match[1] + ' ';
@@ -3121,20 +3662,8 @@ class PluginEcosystemManager {
       console.log('📄 最终提取文本长度:', text.length);
       console.log('📄 文本预览:', text.substring(0, 100));
 
-      // 查找段落标记并添加换行
-      const paragraphPattern = /<w:p[^>]*>/g;
-      const paragraphs = xmlString.match(paragraphPattern);
-      if (paragraphs && paragraphs.length > 1) {
-        console.log('📄 找到段落数量:', paragraphs.length);
-        // 如果有多个段落，尝试重新组织文本
-        const reorganizedText = this.reorganizeTextByParagraphs(xmlString);
-        if (reorganizedText && reorganizedText.length > text.length) {
-          text = reorganizedText;
-        }
-      }
-
     } catch (error) {
-      console.log('📄 XML解析失败:', error.message);
+      console.log('📄 简单文本提取失败:', error.message);
     }
 
     return text;
@@ -3226,14 +3755,155 @@ class PluginEcosystemManager {
     return text.replace(/\s+/g, ' ').trim();
   }
 
-  // 清理DOCX文本
-  cleanDocxText(text) {
+  // 增强的文本编码修复方法
+  fixTextEncoding(text) {
+    if (!text) return '';
+
+    // 检测常见的编码问题模式
+    const encodingIssues = [
+      { pattern: /Ã¢â‚¬â„¢/g, replacement: "'" },  // 右单引号
+      { pattern: /Ã¢â‚¬Å"/g, replacement: '"' },    // 左双引号
+      { pattern: /Ã¢â‚¬\u009d/g, replacement: '"' }, // 右双引号
+      { pattern: /Ã¢â‚¬â€œ/g, replacement: '—' },   // 长破折号
+      { pattern: /Ã¢â‚¬â€/g, replacement: '–' },    // 短破折号
+      { pattern: /Ã¯Â¿Â½/g, replacement: '' },      // 替换字符
+      { pattern: /Â/g, replacement: '' },           // 非断行空格问题
+      { pattern: /â€™/g, replacement: "'" },        // 右单引号
+      { pattern: /â€œ/g, replacement: '"' },        // 左双引号
+      { pattern: /â€\u009d/g, replacement: '"' },   // 右双引号
+      { pattern: /â€"/g, replacement: '—' },        // 长破折号
+      { pattern: /â€"/g, replacement: '–' }         // 短破折号
+    ];
+
+    let fixedText = text;
+
+    // 应用编码修复规则
+    for (const issue of encodingIssues) {
+      if (fixedText.match(issue.pattern)) {
+        console.log('📄 修复编码问题:', issue.pattern);
+        fixedText = fixedText.replace(issue.pattern, issue.replacement);
+      }
+    }
+
+    // 如果检测到可能的Latin-1编码问题
+    if (fixedText.includes('Ã') || fixedText.includes('â') || fixedText.includes('é')) {
+      try {
+        console.log('📄 尝试Latin-1到UTF-8转换');
+        const buffer = Buffer.from(fixedText, 'latin1');
+        const utf8Text = buffer.toString('utf8');
+
+        // 验证转换结果是否更好
+        if (utf8Text && !utf8Text.includes('\uFFFD') && utf8Text.length > 0) {
+          // 检查是否减少了乱码字符
+          const originalBadChars = (fixedText.match(/[ÃâéÂ]/g) || []).length;
+          const convertedBadChars = (utf8Text.match(/[ÃâéÂ]/g) || []).length;
+
+          if (convertedBadChars < originalBadChars) {
+            console.log('📄 Latin-1转换成功，乱码字符减少:', originalBadChars, '->', convertedBadChars);
+            fixedText = utf8Text;
+          }
+        }
+      } catch (e) {
+        console.warn('📄 Latin-1转换失败:', e.message);
+      }
+    }
+
+    // 解码XML/HTML实体
+    fixedText = this.decodeXmlEntities(fixedText);
+
+    return fixedText;
+  }
+
+  // 解码XML/HTML实体
+  decodeXmlEntities(text) {
     if (!text) return '';
 
     return text
-      .replace(/\s+/g, ' ')  // 合并多个空格
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&#(\d+);/g, (match, dec) => {
+        try {
+          return String.fromCharCode(parseInt(dec, 10));
+        } catch (e) {
+          return match;
+        }
+      })
+      .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
+        try {
+          return String.fromCharCode(parseInt(hex, 16));
+        } catch (e) {
+          return match;
+        }
+      });
+  }
+
+  // 清理DOCX文本 - 增强版
+  cleanDocxText(text) {
+    if (!text) return '';
+
+    console.log('📄 开始清理文本，原始长度:', text.length);
+
+    // 1. 移除XML残留标签和属性
+    text = text
+      .replace(/<[^>]*>/g, ' ')  // 移除所有XML标签
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+
+    // 2. 清理特殊字符和控制字符
+    text = text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')  // 移除控制字符
+      .replace(/\uFEFF/g, '')  // 移除BOM
+      .replace(/\u200B/g, '');  // 移除零宽空格
+
+    // 3. 处理空白字符
+    text = text
+      .replace(/[ \t]+/g, ' ')  // 合并空格和制表符
+      .replace(/\r\n/g, '\n')   // 统一换行符
+      .replace(/\r/g, '\n')     // 统一换行符
+      .replace(/\n[ \t]+/g, '\n')  // 清理行首空白
+      .replace(/[ \t]+\n/g, '\n')  // 清理行尾空白
+      .replace(/\n{3,}/g, '\n\n'); // 合并多个换行为双换行
+
+    // 4. 清理无意义的文本片段
+    const lines = text.split('\n');
+    const cleanedLines = lines.filter(line => {
+      const trimmed = line.trim();
+
+      // 过滤掉过短的行（可能是XML残留）
+      if (trimmed.length < 2) return false;
+
+      // 过滤掉纯数字或特殊字符的行
+      if (/^[\d\s\-_\.#]+$/.test(trimmed)) return false;
+
+      // 过滤掉看起来像XML属性的行
+      if (/^[A-Z]{2,}$/.test(trimmed) && trimmed.length < 10) return false;
+
+      // 保留包含中文或有意义英文的行
+      if (/[\u4e00-\u9fa5]/.test(trimmed) || /[a-zA-Z]{3,}/.test(trimmed)) {
+        return true;
+      }
+
+      return false;
+    });
+
+    // 5. 重新组合文本
+    text = cleanedLines.join('\n');
+
+    // 6. 最终清理
+    text = text
       .replace(/\n\s*\n/g, '\n\n')  // 规范化段落分隔
       .trim();
+
+    console.log('📄 清理完成，最终长度:', text.length);
+    console.log('📄 清理后预览:', text.substring(0, 200));
+
+    return text;
   }
 
   // 生成DOCX的HTML格式

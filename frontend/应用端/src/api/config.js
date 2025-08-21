@@ -3,12 +3,12 @@ import axios from 'axios'
 // 创建axios实例 - 统一使用/api前缀，通过代理转发到配置端Mock服务
 const configApi = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 0 // 解除超时限制
 })
 
 const appApi = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 0 // 解除超时限制
 })
 
 // 请求拦截器

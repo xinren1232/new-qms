@@ -250,12 +250,29 @@ export function executeWorkflow(id, data) {
   })
 }
 
-/** 文档解析场景工作流执行 */
+/** 文档解析场景工作流执行（异步：返回 execution_id 需轮询）*/
 export function executeDocumentParsingWorkflow(payload){
   return request({
-    url: `${COZE_STUDIO_BASE_URL}/workflows/document-parsing/execute`,
+    url: `/api/workflows/document-parsing/execute`,
     method: 'post',
     data: payload
+  })
+}
+
+/** 文档解析执行（同步直返结果，便于聊天页即时展示）*/
+export function executeDocumentParsingDirect(payload){
+  return request({
+    url: `/api/workflows/execute/document-parsing`,
+    method: 'post',
+    data: payload
+  })
+}
+
+/** 查询文档解析执行结果（用于轮询） */
+export function getDocumentParsingExecutionStatus(executionId){
+  return request({
+    url: `/api/workflows/document-parsing/executions/${executionId}`,
+    method: 'get'
   })
 }
 
@@ -387,7 +404,7 @@ export function ingestFromMessages(data) {
 /** Traces: 追加执行过程记录 */
 export function appendTrace(data) {
   return request({
-    url: `${COZE_STUDIO_BASE_URL}/traces/append`,
+    url: `/api/traces/append`,
     method: 'post',
     data
   })
@@ -396,7 +413,7 @@ export function appendTrace(data) {
 /** Traces: 获取执行过程记录 */
 export function getTraces(params) {
   return request({
-    url: `${COZE_STUDIO_BASE_URL}/traces`,
+    url: `/api/traces`,
     method: 'get',
     params
   })
@@ -810,6 +827,9 @@ export default {
   executeWorkflow,
   getWorkflowExecution,
   executeDocumentParsingWorkflow,
+  executeDocumentParsingDirect,
+  getDocumentParsingExecutionStatus,
+
 
   // Knowledge相关
   getKnowledgeBases,

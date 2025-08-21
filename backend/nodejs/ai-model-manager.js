@@ -8,9 +8,9 @@
  * 4. 性能监控和优化
  */
 
-import { EventEmitter } from 'events';
-import fs from 'fs/promises';
-import path from 'path';
+const { EventEmitter } = require('events');
+const fs = require('fs').promises;
+const path = require('path');
 
 // AI模型配置
 const AI_MODELS = {
@@ -381,4 +381,4 @@ class AIModelManager extends EventEmitter {
   }
 }
 
-export default AIModelManager;
+module.exports = AIModelManager;

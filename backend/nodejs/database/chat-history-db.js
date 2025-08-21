@@ -149,12 +149,13 @@ class ChatHistoryDB {
       )`
     ];
 
-    // 创建索引
+    // 创建索引（避免重复定义）
     const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_conversations_user_created ON chat_conversations(user_id, created_at DESC)',
-      'CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON chat_messages(conversation_id, created_at ASC)',
-      'CREATE INDEX IF NOT EXISTS idx_messages_user_created ON chat_messages(user_id, created_at DESC)',
-      // 为新表添加索引
+      // 聊天相关表索引
+      'CREATE INDEX IF NOT EXISTS idx_chat_conversations_user_created ON chat_conversations(user_id, created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created ON chat_messages(conversation_id, created_at ASC)',
+      'CREATE INDEX IF NOT EXISTS idx_chat_messages_user_created ON chat_messages(user_id, created_at DESC)',
+      // 新表索引
       'CREATE INDEX IF NOT EXISTS idx_conversations_user_created ON conversations(user_id, created_at DESC)',
       'CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)',
       'CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(is_deleted)',
@@ -235,7 +236,14 @@ class ChatHistoryDB {
       return;
     }
 
+    // 添加超时保护，防止无限循环
+    const timeout = setTimeout(() => {
+      console.error(`⚠️ SQL语句执行超时 (${index + 1}), 跳过: ${statement.substring(0, 50)}...`);
+      this.executeStatementsSequentially(statements, index + 1, callback);
+    }, 5000);
+
     this.db.run(statement, (err) => {
+      clearTimeout(timeout);
       if (err) {
         console.error(`❌ 执行Coze Studio SQL语句失败 (${index + 1}):`, err.message);
       } else {
@@ -265,11 +273,19 @@ class ChatHistoryDB {
   // 串行创建索引
   createIndexesSequentially(indexes, index, callback) {
     if (index >= indexes.length) {
+      console.log('✅ 所有索引创建完成');
       callback();
       return;
     }
 
+    // 添加超时保护，防止无限循环
+    const timeout = setTimeout(() => {
+      console.error(`⚠️ 索引创建超时 (${index + 1}), 跳过: ${indexes[index].substring(0, 50)}...`);
+      this.createIndexesSequentially(indexes, index + 1, callback);
+    }, 3000);
+
     this.db.run(indexes[index], (err) => {
+      clearTimeout(timeout);
       if (err) {
         console.error(`❌ 创建索引${index + 1}失败:`, err.message);
       } else {

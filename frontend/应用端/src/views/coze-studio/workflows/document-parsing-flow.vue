@@ -3,7 +3,7 @@
     <!-- 顶部工具栏 -->
     <div class="workflow-header">
       <div class="header-left">
-        <el-button @click="goBack" size="small" text>
+        <el-button @click="goBack" size="small" link>
           <el-icon><ArrowLeft /></el-icon>
           返回工作流
         </el-button>
@@ -13,6 +13,7 @@
         </div>
       </div>
       <div class="header-right">
+        <el-switch v-model="canvasMode" size="small" active-text="画布" inactive-text="列表" style="margin-right:8px;"/>
         <el-button @click="resetWorkflow" size="small">
           <el-icon><Refresh /></el-icon>
           重置流程
@@ -61,7 +62,7 @@
           <div v-if="fileList.length > 0" class="file-list">
             <div class="file-list-header">
               <span>已选择文件 ({{ fileList.length }})</span>
-              <el-button @click="clearAllFiles" size="small" text type="danger">
+              <el-button @click="clearAllFiles" size="small" type="danger" link>
                 清空全部
               </el-button>
             </div>
@@ -90,7 +91,7 @@
                     {{ getFileStatusText(file.parseStatus) }}
                   </el-tag>
                 </div>
-                <el-button @click.stop="removeFile(index)" size="small" text type="danger">
+                <el-button @click.stop="removeFile(index)" size="small" type="danger" link>
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
@@ -156,8 +157,8 @@
           </div>
         </div>
 
-        <!-- 工作流步骤展示 -->
-        <div class="workflow-steps">
+        <!-- 工作流步骤展示 / 画布模式 -->
+        <div class="workflow-steps" v-if="!canvasMode">
           <div class="steps-container">
             <div
               v-for="(step, index) in workflowSteps"
@@ -227,6 +228,9 @@
               </div>
             </div>
           </div>
+        </div>
+        <div v-else class="workflow-canvas">
+          <WorkflowDesignPreview :workflow="workflowCanvasData" />
         </div>
 
         <!-- 整体进度条 -->
@@ -353,21 +357,13 @@
               </div>
             </div>
 
-            <!-- 解析内容 -->
+            <!-- 内容预览（多格式） -->
             <div class="result-section">
-              <h5>📝 解析内容</h5>
-              <div class="content-preview">
-                <el-input
-                  v-model="finalResult.content"
-                  type="textarea"
-                  :rows="8"
-                  readonly
-                  placeholder="解析的文本内容将在此显示..."
-                />
-                <div class="content-stats">
-                  <span>字符数: {{ finalResult.content?.length || 0 }}</span>
-                  <span>字数: {{ getWordCount(finalResult.content) }}</span>
-                </div>
+              <h5>📝 内容预览</h5>
+              <UniversalDocViewer v-if="finalResult" :result="finalResultForViewer" />
+              <div class="content-stats" v-if="finalResult?.content">
+                <span>字符数: {{ finalResult.content?.length || 0 }}</span>
+                <span>字数: {{ getWordCount(finalResult.content) }}</span>
               </div>
             </div>
 
@@ -451,7 +447,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import WorkflowDesignPreview from './components/WorkflowDesignPreview.vue'
+
+import UniversalDocViewer from './components/viewers/UniversalDocViewer.vue'
+
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -478,6 +478,25 @@ const activeAnalysisTab = ref('structure')
 const lastExecutionTime = ref('')
 const batchMode = ref(false)
 const batchResults = ref([])
+const canvasMode = ref(false)
+
+// 画布数据映射（只读）
+const workflowCanvasData = computed(() => ({
+  name: '文档解析流程',
+  version: '2.0',
+  status: isRunning.value ? 'running' : 'active',
+  category: 'data-processing',
+  nodes: workflowSteps.value.map((s, i) => ({ id: s.id, name: s.title, type: mapNodeType(s.id), x: 80 + i*180, y: 80 + ((i%2)*120), status: s.status, duration: s.details?.duration })),
+  connections: workflowSteps.value.slice(0, -1).map((s, i) => ({ from: s.id, to: workflowSteps.value[i+1].id }))
+}))
+
+function mapNodeType(id){
+  if (id.includes('ai')) return 'ai';
+  if (id.includes('input')) return 'start';
+  if (id.includes('output')) return 'end';
+  if (id.includes('parser')) return 'document';
+  return 'document';
+}
 
 // 接受的文件类型
 const acceptedFileTypes = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.json,.xml,.png,.jpg,.jpeg,.bmp,.gif,.webp,.md,.rtf'
@@ -485,6 +504,39 @@ const acceptedFileTypes = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.json,.xml,.png,
 // 计算属性
 const currentFile = computed(() => {
   return fileList.value[currentFileIndex.value] || null
+})
+
+// 供 UniversalDocViewer 使用的统一结果（根据可用数据选择最合适的展示类型）
+const finalResultForViewer = computed(() => {
+  const fr = finalResult.value || {}
+  const rawFormat = fr?.metadata?.format || fr?.format || 'text'
+  const hasSheets = (Array.isArray(fr?.structuredData?.sheets) && fr.structuredData.sheets.length > 0) || (Array.isArray(fr?.sheets) && fr.sheets.length > 0)
+  const hasPages = Array.isArray(fr?.pages) && fr.pages.length > 0
+  const hasSlides = Array.isArray(fr?.slides) && fr.slides.length > 0
+  const hasHtml = !!fr?.html
+
+  let effective = 'text'
+  if (hasPages) {
+    effective = 'pdf'
+  } else if (hasSlides) {
+    effective = 'pptx'
+  } else if (hasSheets) {
+    effective = 'xlsx'
+  } else if (rawFormat === 'docx' && (hasHtml || !!fr?.content)) {
+    effective = 'docx'
+  } else if (hasHtml) {
+    effective = 'docx'
+  }
+
+  return {
+    format: effective,
+    text: fr?.content,
+    html: fr?.html,
+    pages: fr?.pages,
+    slides: fr?.slides,
+    sheets: fr?.structuredData?.sheets || fr?.sheets,
+    metadata: { ...(fr?.metadata || {}), format: effective }
+  }
 })
 
 // 工作流步骤定义 - 参考图二优化为多格式解析流程
@@ -610,7 +662,7 @@ const getEntityTagType = (entityType) => {
     'PERSON': 'success',
     'ORG': 'warning',
     'GPE': 'info',
-    'DATE': 'primary',
+    'DATE': 'warning',
     'MONEY': 'danger'
   }
   return typeMap[entityType] || ''
@@ -625,18 +677,30 @@ const formatStepResult = (result) => {
 
 // 文件处理
 const handleFileChange = (file) => {
-  if (file.size > 50 * 1024 * 1024) { // 50MB限制
+  console.log('文件上传变更:', { file, type: typeof file, constructor: file.constructor?.name })
+
+  // 获取实际的文件对象进行大小检查
+  const actualFile = file.raw || file
+  const fileSize = actualFile?.size || file.size || 0
+
+  if (fileSize > 50 * 1024 * 1024) { // 50MB限制
     ElMessage.error('文件大小不能超过50MB')
     return
   }
 
-  // 添加到文件列表
+  // 添加到文件列表 - 确保保留原始文件对象
   const fileItem = {
     ...file,
     uid: file.uid || Date.now(),
     parseStatus: 'pending',
     preview: null,
-    result: null
+    result: null,
+    // 确保保留原始文件对象的引用
+    raw: file.raw || file,
+    // 保存文件基本信息
+    name: file.name,
+    size: fileSize,
+    type: file.type || actualFile?.type || ''
   }
 
   fileList.value.push(fileItem)
@@ -721,10 +785,18 @@ const getFileStatusText = (status) => {
 
 // 文件预览功能
 const previewFile = async (file) => {
-  // 获取实际的文件对象
-  const actualFile = file.raw || file
+  // 获取实际的文件对象 - 增强兼容性检查
+  let actualFile = file.raw || file
 
-  if (!actualFile || !(actualFile instanceof File || actualFile instanceof Blob)) return
+  // 如果是Element Plus的文件对象，尝试获取原始文件
+  if (actualFile && actualFile.originFileObj) {
+    actualFile = actualFile.originFileObj
+  }
+
+  if (!actualFile || !(actualFile instanceof File || actualFile instanceof Blob)) {
+    console.warn('文件预览失败 - 无效的文件对象:', { file, actualFile })
+    return
+  }
 
   try {
     const fileType = getFileType(file.name)
@@ -740,7 +812,7 @@ const previewFile = async (file) => {
       }
       reader.readAsDataURL(actualFile)
     } else if (fileType.includes('文本') || file.name.endsWith('.md')) {
-      // 文本文件预览
+      // 文本文件预览 - 增强编码处理
       const reader = new FileReader()
       reader.onload = (e) => {
         file.preview = {
@@ -748,7 +820,20 @@ const previewFile = async (file) => {
           content: e.target.result
         }
       }
-      reader.readAsText(actualFile)
+      reader.onerror = () => {
+        // 如果UTF-8读取失败，尝试其他编码
+        const binaryReader = new FileReader()
+        binaryReader.onload = (e) => {
+          file.preview = {
+            type: 'text',
+            content: e.target.result,
+            encoding: 'binary'
+          }
+        }
+        binaryReader.readAsBinaryString(actualFile)
+      }
+      // 默认尝试UTF-8编码
+      reader.readAsText(actualFile, 'UTF-8')
     } else if (fileType.includes('JSON')) {
       // JSON文件预览
       const reader = new FileReader()
@@ -767,7 +852,20 @@ const previewFile = async (file) => {
           }
         }
       }
-      reader.readAsText(actualFile)
+      reader.onerror = () => {
+        // 如果UTF-8读取失败，尝试其他编码
+        const binaryReader = new FileReader()
+        binaryReader.onload = (e) => {
+          file.preview = {
+            type: 'text',
+            content: e.target.result,
+            encoding: 'binary'
+          }
+        }
+        binaryReader.readAsBinaryString(actualFile)
+      }
+      // 默认尝试UTF-8编码
+      reader.readAsText(actualFile, 'UTF-8')
     }
   } catch (error) {
     console.error('文件预览失败:', error)
@@ -850,26 +948,39 @@ const startWorkflow = async () => {
 
 // 单文件工作流 - 更新为新的7步流程
 const executeSingleWorkflow = async () => {
-  // 步骤1: 文档输入
-  await executeStep('input')
+  const steps = [
+    'input',
+    'format_detection',
+    'parser_selection',
+    'content_extraction',
+    'normalization',
+    'ai_analysis',
+    'output_formatting'
+  ]
 
-  // 步骤2: 格式识别
-  await executeStep('format_detection')
+  let hasErrors = false
 
-  // 步骤3: 解析器选择
-  await executeStep('parser_selection')
+  for (const stepId of steps) {
+    try {
+      await executeStep(stepId)
 
-  // 步骤4: 内容提取
-  await executeStep('content_extraction')
+      // 检查步骤是否失败
+      const step = workflowSteps.value.find(s => s.id === stepId)
+      if (step && step.status === 'error') {
+        hasErrors = true
+        console.warn(`步骤 ${stepId} 失败，但继续执行后续步骤`)
+      }
+    } catch (error) {
+      console.error(`步骤 ${stepId} 执行异常:`, error)
+      hasErrors = true
+      // 继续执行下一步
+    }
+  }
 
-  // 步骤5: 内容归一化
-  await executeStep('normalization')
-
-  // 步骤6: AI智能分析
-  await executeStep('ai_analysis')
-
-  // 步骤7: 结果输出
-  await executeStep('output_formatting')
+  // 如果有错误，显示警告消息
+  if (hasErrors) {
+    ElMessage.warning('工作流执行完成，但部分步骤出现错误，请检查详细信息')
+  }
 }
 
 // 批量工作流
@@ -912,40 +1023,91 @@ const executeBatchWorkflow = async () => {
   }
 }
 
-// 调用后端API进行文件解析
+// 调用后端API进行文件解析 - 使用同步API确保工作流步骤正常执行
 const executeFileParsingAPI = async (file) => {
-  // 获取实际的文件对象
-  const actualFile = file.raw || file
+  // 获取实际的文件对象 - 增强兼容性检查
+  let actualFile = file.raw || file
 
-  if (!actualFile || !(actualFile instanceof File || actualFile instanceof Blob)) {
-    throw new Error('无效的文件对象')
+  // 如果是Element Plus的文件对象，尝试获取原始文件
+  if (actualFile && actualFile.originFileObj) {
+    actualFile = actualFile.originFileObj
+  }
+
+  // 验证文件对象
+  if (!actualFile) {
+    console.error('文件对象为空:', { file, actualFile })
+    throw new Error('文件对象为空')
+  }
+
+  if (!(actualFile instanceof File || actualFile instanceof Blob)) {
+    console.error('文件对象类型检查失败:', {
+      file,
+      actualFile,
+      type: typeof actualFile,
+      constructor: actualFile.constructor?.name,
+      isFile: actualFile instanceof File,
+      isBlob: actualFile instanceof Blob
+    })
+    throw new Error('无效的文件对象类型')
   }
 
   // 将文件转换为base64
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
+    reader.onload = () => {
+      try {
+        const result = reader.result
+        if (typeof result === 'string' && result.includes(',')) {
+          resolve(result.split(',')[1])
+        } else {
+          reject(new Error('FileReader结果格式异常'))
+        }
+      } catch (error) {
+        reject(error)
+      }
+    }
+    reader.onerror = () => reject(new Error('文件读取失败'))
     reader.readAsDataURL(actualFile)
   })
 
+  // 使用同步API确保工作流步骤能正常获取结果
   const payload = {
-    input: {
-      file: {
-        name: file.name,
-        type: file.type || 'application/octet-stream',
-        base64: base64
-      }
+    inputData: {
+      type: 'file',
+      name: file.name,
+      size: file.size,
+      mimeType: file.type || 'application/octet-stream',
+      base64: base64
     },
-    options: {
-      summarize: true,
-      stats: true,
-      ingest_kb: false
-    }
+    detectedFormat: detectFileFormat(file.name),
+    selectedParser: 'auto',
+    parserConfig: {}
   }
 
-  const response = await cozeStudioAPI.executeDocumentParsingWorkflow(payload)
+  const response = await cozeStudioAPI.executeDocumentParsingDirect(payload)
   return response.data
+}
+
+// 检测文件格式
+const detectFileFormat = (fileName) => {
+  if (!fileName) return 'text'
+
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  const formatMap = {
+    'txt': 'text',
+    'csv': 'csv',
+    'pdf': 'pdf',
+    'docx': 'docx',
+    'doc': 'doc',
+    'xlsx': 'xlsx',
+    'xls': 'xls',
+    'json': 'json',
+    'xml': 'xml',
+    'md': 'markdown',
+    'rtf': 'rtf'
+  }
+
+  return formatMap[ext] || 'text'
 }
 
 const executeStep = async (stepId) => {
@@ -997,9 +1159,24 @@ const executeStep = async (stepId) => {
     await new Promise(resolve => setTimeout(resolve, 500))
 
   } catch (error) {
+    console.error(`步骤 ${stepId} 执行失败:`, error)
     step.status = 'error'
     step.details = { ...step.details, error: error.message }
-    throw error
+    step.executionTime = Date.now() - startTime
+
+    // 不要抛出错误，让工作流继续执行
+    // 为下一步提供一个默认结果
+    step.result = {
+      error: true,
+      message: error.message,
+      fallback: true
+    }
+
+    // 更新进度
+    workflowProgress.value = ((stepIndex + 1) / workflowSteps.value.length) * 100
+
+    // 短暂延迟以显示动画效果
+    await new Promise(resolve => setTimeout(resolve, 500))
   }
 }
 
@@ -1119,10 +1296,10 @@ const getSupportedParsers = (format) => {
     'docx': ['mammoth', 'docx-parser', 'pandoc'],
     'xlsx': ['xlsx', 'exceljs', 'node-xlsx'],
     'csv': ['csv-parser', 'papaparse', 'fast-csv'],
-    'image': ['tesseract-ocr', 'google-vision', 'azure-ocr'],
+    'image': ['image-parser', 'tesseract-ocr', 'google-vision', 'azure-ocr'],
     'json': ['native-json', 'json5'],
     'xml': ['xml2js', 'fast-xml-parser'],
-    'text': ['native-text', 'encoding-detector']
+    'text': ['text-parser', 'native-text', 'encoding-detector']
   }
   return parserMap[format] || ['fallback-text']
 }
@@ -1158,10 +1335,10 @@ const selectBestParser = (format, category, confidence) => {
     'docx': 'mammoth',
     'xlsx': 'xlsx',
     'csv': 'csv-parser',
-    'image': 'tesseract-ocr',
+    'image': 'image-parser',
     'json': 'native-json',
     'xml': 'xml2js',
-    'text': 'native-text'
+    'text': 'text-parser'
   }
   return parserPriority[format] || 'fallback-text'
 }
@@ -1200,30 +1377,20 @@ const executeContentExtractionStep = async () => {
   const parserSelectionStep = workflowSteps.value.find(s => s.id === 'parser_selection')
   const inputData = inputStep.result
   const parserData = parserSelectionStep.result
+  // 读取格式检测结果，获取正确的文件格式（如 docx/pdf/xlsx 等）
+  const formatDetectionStep = workflowSteps.value.find(s => s.id === 'format_detection')
   const step = workflowSteps.value.find(s => s.id === 'content_extraction')
 
   try {
-    // 调用后端文档解析API，使用选定的解析器
-    const response = await fetch('/api/coze-studio/workflows/execute/document-parsing', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('qms_token')}`,
-        'user-id': localStorage.getItem('qms_user_id') || 'anonymous'
-      },
-      body: JSON.stringify({
-        inputData,
-        selectedParser: parserData.selectedParser,
-        parserConfig: parserData.parserConfig,
-        detectedFormat: parserData.selectedParser
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`内容提取失败: ${response.statusText}`)
+    // 使用统一的API调用方式
+    const payload = {
+      inputData,
+      selectedParser: parserData.selectedParser,
+      parserConfig: parserData.parserConfig,
+      detectedFormat: formatDetectionStep?.result?.format || 'text'
     }
 
-    const result = await response.json()
+    const result = await cozeStudioAPI.executeDocumentParsingDirect(payload)
 
     if (!result.success) {
       throw new Error(result.message || '内容提取失败')
@@ -1242,6 +1409,7 @@ const executeContentExtractionStep = async () => {
     return {
       content: extractedContent,
       rawData: rawData,
+      html: result.data.html || null,
       metadata: result.data.metadata || {},
       parser: parserData.selectedParser,
       extractionStats: {
@@ -1253,15 +1421,31 @@ const executeContentExtractionStep = async () => {
 
   } catch (error) {
     // 如果API调用失败，使用简单的文本处理
-    console.warn('API解析失败，使用简单文本处理:', error.message)
+    console.error('API解析失败，使用简单文本处理:', {
+      error: error.message,
+      stack: error.stack,
+      inputData: {
+        type: inputData.type,
+        hasBase64: !!inputData.base64,
+        hasText: !!inputData.text,
+        name: inputData.name
+      }
+    })
 
     let content = ''
     if (inputData.type === 'text') {
       content = inputData.text
     } else if (inputData.type === 'file' && inputData.base64) {
-      // 简单的base64文本解码（仅适用于文本文件）
+      // 增强的base64文本解码
       try {
-        content = atob(inputData.base64)
+        const binaryString = atob(inputData.base64)
+        // 尝试UTF-8解码
+        try {
+          content = decodeURIComponent(escape(binaryString))
+        } catch {
+          // 如果UTF-8解码失败，直接使用二进制字符串
+          content = binaryString
+        }
       } catch {
         content = '无法解析文件内容'
       }
@@ -1310,6 +1494,7 @@ const executeNormalizationStep = async () => {
     return {
       normalizedContent,
       structuredData,
+      html: extractionData.html || null,
       contentType: detectContentType(normalizedContent),
       metadata: {
         ...extractionData.metadata,
@@ -1330,6 +1515,7 @@ const executeNormalizationStep = async () => {
     return {
       normalizedContent: extractionData.content || '',
       structuredData: null,
+      html: extractionData.html || null,
       contentType: 'text',
       metadata: extractionData.metadata
     }
@@ -1477,8 +1663,8 @@ const executeAIAnalysisStep = async () => {
   const step = workflowSteps.value.find(s => s.id === 'ai_analysis')
 
   try {
-    // 调用增强的AI分析API
-    const response = await fetch('/api/coze-studio/ai/analyze-document', {
+    // 调用增强的AI分析API - 使用正确的API路径
+    const response = await fetch('/api/ai/analyze-document', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1520,7 +1706,7 @@ const executeAIAnalysisStep = async () => {
     // 如果AI分析失败，使用简单的文本分析
     console.warn('AI分析失败，使用简单分析:', error.message)
 
-    const content = parsingData.content || ''
+    const content = normalizationData?.normalizedContent || ''
     const words = content.split(/\s+/).filter(Boolean)
     const sentences = content.split(/[.!?]+/).filter(Boolean)
 
@@ -1609,6 +1795,7 @@ const executeOutputFormattingStep = async () => {
   // 格式化最终结果
   const formattedResult = {
     content: normalizationData.normalizedContent,
+    html: normalizationData.html || null,
     structuredData: normalizationData.structuredData,
     metadata: {
       fileName: inputData.name || 'unknown',
@@ -1680,8 +1867,13 @@ const calculateAnalysisConfidence = (analysisData) => {
 // 辅助函数
 const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
-    // 获取实际的文件对象
-    const actualFile = file.raw || file
+    // 获取实际的文件对象 - 增强兼容性检查
+    let actualFile = file.raw || file
+
+    // 如果是Element Plus的文件对象，尝试获取原始文件
+    if (actualFile && actualFile.originFileObj) {
+      actualFile = actualFile.originFileObj
+    }
 
     if (!actualFile || !(actualFile instanceof File || actualFile instanceof Blob)) {
       reject(new Error('无效的文件对象'))
@@ -1691,10 +1883,19 @@ const fileToBase64 = (file) => {
     const reader = new FileReader()
     reader.readAsDataURL(actualFile)
     reader.onload = () => {
-      const base64 = reader.result.split(',')[1]
-      resolve(base64)
+      try {
+        const result = reader.result
+        if (typeof result === 'string' && result.includes(',')) {
+          const base64 = result.split(',')[1]
+          resolve(base64)
+        } else {
+          reject(new Error('FileReader结果格式异常'))
+        }
+      } catch (error) {
+        reject(error)
+      }
     }
-    reader.onerror = error => reject(error)
+    reader.onerror = error => reject(new Error('文件读取失败: ' + error.message))
   })
 }
 

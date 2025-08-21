@@ -8,7 +8,7 @@ import { ElMessage } from 'element-plus'
 // 创建axios实例
 const service = axios.create({
   baseURL: '', // 开发使用Vite代理，生产由Nginx/网关统一转发
-  timeout: 15000, // 请求超时时间
+  timeout: 0, // 解除超时限制，支持长时间AI响应
   retry: 2, // 重试次数
   retryDelay: 1000 // 重试延迟
 })

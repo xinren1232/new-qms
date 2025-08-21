@@ -24,7 +24,7 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.COZE_STUDIO_PORT || 3005;
 
-// 简化的编码检测和解码函数
+// 增强的编码检测和解码函数
 function detectAndDecodeText(buffer) {
   if (!buffer || buffer.length === 0) return '';
 
@@ -49,8 +49,13 @@ function detectAndDecodeText(buffer) {
     const utf8Text = buffer.toString('utf-8');
     // 检查是否包含UTF-8替换字符（乱码标志）
     if (!utf8Text.includes('\uFFFD') && utf8Text.length > 0) {
-      console.log('🔤 使用UTF-8编码');
-      return utf8Text;
+      // 简单验证：检查是否包含中文字符或者是纯ASCII
+      const hasChineseChars = utf8Text.match(/[\u4e00-\u9fff]/);
+      const isPureAscii = /^[\x00-\x7F]*$/.test(utf8Text);
+      if (hasChineseChars || isPureAscii) {
+        console.log('🔤 使用UTF-8编码');
+        return utf8Text;
+      }
     }
   } catch (e) {
     console.warn('UTF-8解码失败:', e.message);
@@ -71,7 +76,35 @@ function detectAndDecodeText(buffer) {
   }
 
   try {
-    // 3. 尝试Latin-1解码
+    // 3. 尝试GB18030解码
+    const iconv = require('iconv-lite');
+    if (iconv.encodingExists('gb18030')) {
+      const gb18030Text = iconv.decode(buffer, 'gb18030');
+      if (gb18030Text && gb18030Text.length > 0 && !gb18030Text.includes('\uFFFD')) {
+        console.log('🔤 检测到GB18030编码');
+        return gb18030Text;
+      }
+    }
+  } catch (e) {
+    console.warn('GB18030解码失败:', e.message);
+  }
+
+  try {
+    // 4. 尝试Windows-1252解码
+    const iconv = require('iconv-lite');
+    if (iconv.encodingExists('windows-1252')) {
+      const win1252Text = iconv.decode(buffer, 'windows-1252');
+      if (win1252Text && win1252Text.length > 0) {
+        console.log('🔤 使用Windows-1252编码');
+        return win1252Text;
+      }
+    }
+  } catch (e) {
+    console.warn('Windows-1252解码失败:', e.message);
+  }
+
+  try {
+    // 5. 尝试Latin-1解码
     const latin1Text = buffer.toString('latin1');
     if (latin1Text && latin1Text.length > 0) {
       console.log('🔤 使用Latin-1编码');
@@ -81,7 +114,18 @@ function detectAndDecodeText(buffer) {
     console.warn('Latin-1解码失败:', e.message);
   }
 
-  // 4. 最后回退到二进制字符串
+  // 6. 最后回退到ASCII
+  try {
+    const asciiText = buffer.toString('ascii');
+    if (asciiText && asciiText.length > 0) {
+      console.log('🔤 使用ASCII编码');
+      return asciiText;
+    }
+  } catch (e) {
+    console.warn('ASCII解码失败:', e.message);
+  }
+
+  // 7. 最终回退到二进制字符串
   console.warn('🔤 所有编码检测失败，使用二进制回退');
   return buffer.toString('binary');
 }
@@ -1586,29 +1630,9 @@ app.post('/api/workflows/document-parsing/execute', authenticateUserOrAnonymous,
         message: '文档解析开始执行'
       });
 
-      // 立即在executionStore中创建初始记录
       const steps = [];
-      executionStore.set(executionId, {
-        id: executionId,
-        steps: [],
-        status: 'running',
-        duration: 0,
-        current_step: 0,
-        total_steps: 5
-      });
       const recordStep = (title, status, data = {}, started_at, completed_at) => {
-        const step = { title, status, data, started_at, completed_at, duration_ms: (completed_at - started_at) };
-        steps.push(step);
-
-        // 实时更新执行状态到store，供前端轮询查询
-        executionStore.set(executionId, {
-          id: executionId,
-          steps: [...steps], // 创建副本避免引用问题
-          status: status === 'failed' ? 'failed' : (steps.length >= 5 ? 'completed' : 'running'),
-          duration: Date.now() - startAll,
-          current_step: steps.length,
-          total_steps: 5
-        });
+        steps.push({ title, status, data, started_at, completed_at, duration_ms: (completed_at - started_at) });
       };
 
       // 0) 确保核心插件可用
@@ -2746,14 +2770,6 @@ app.post('/api/knowledge/search', authenticateUser, async (req, res) => {
     const { query, top_k = 3, kb_scope = 'user', conversation_id } = req.body || {};
     if (!query) return res.status(400).json({ success: false, message: 'query 不能为空' });
 
-    // TODO: 实现知识检索逻辑
-    res.json({ success: true, data: { items: [] } });
-  } catch (error) {
-    console.error('知识检索失败:', error);
-    res.status(500).json({ success: false, message: '知识检索失败', error: error.message });
-  }
-});
-
 /** Traces: 执行过程记录（右侧过程栏数据源） **/
 async function appendTrace(cacheService, userId, conversationId, trace) {
   try {
@@ -2767,26 +2783,19 @@ async function appendTrace(cacheService, userId, conversationId, trace) {
   }
 }
 
-app.post('/api/traces/append', authenticateUserOrAnonymous, async (req, res) => {
-  console.log('🔍 收到 Traces 追加请求:', {
-    method: req.method,
-    url: req.url,
-    userId: req.user?.id,
-    body: req.body
-  });
+app.post('/api/traces/append', authenticateUser, async (req, res) => {
   try {
     const { conversation_id, trace } = req.body || {};
     if (!conversation_id || !trace) return res.status(400).json({ success: false, message: 'conversation_id 与 trace 必填' });
     await appendTrace(cacheService, req.user.id, conversation_id, { ts: Date.now(), ...trace });
-    console.log('✅ Traces 追加成功');
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Trace追加失败:', error);
+    console.error('Trace追加失败:', error);
     res.status(500).json({ success: false, message: 'Trace追加失败', error: error.message });
   }
 });
 
-app.get('/api/traces', authenticateUserOrAnonymous, async (req, res) => {
+app.get('/api/traces', authenticateUser, async (req, res) => {
   try {
     const { conversation_id, limit = 50 } = req.query;
     if (!conversation_id) return res.status(400).json({ success: false, message: 'conversation_id 必填' });
@@ -3103,6 +3112,26 @@ app.post('/api/knowledge/ingest-from-messages', authenticateUser, async (req, re
   } catch (error) {
     console.error('对话消息入库失败:', error);
     res.status(500).json({ success: false, message: '对话消息入库失败', error: error.message });
+  }
+});
+
+
+    const scopeKey = kb_scope === 'session' && conversation_id ? `${req.user.id}:${conversation_id}` : `${req.user.id}`;
+    const chunks = await kbGetChunks(cacheService, scopeKey);
+    if (!chunks || !chunks.length) return res.json({ success: true, data: { query, results: [], total_found: 0 } });
+
+    const scored = chunks.map(ch => ({
+      docId: ch.docId,
+      title: ch.title,
+      content: ch.text,
+      idx: ch.idx,
+      score: scoreByKeywordOverlap(query, ch.text)
+    })).sort((a, b) => b.score - a.score).slice(0, Math.max(1, Math.min(10, top_k)));
+
+    res.json({ success: true, data: { query, results: scored, total_found: scored.length } });
+  } catch (error) {
+    console.error('知识检索失败:', error);
+    res.status(500).json({ success: false, message: '知识检索失败', error: error.message });
   }
 });
 
@@ -4778,10 +4807,7 @@ app.get('/health', (req, res) => {
 // 启动服务
 async function startServer() {
   try {
-    console.log('🚀 开始启动 Coze Studio 服务...');
-
     // 初始化数据库
-    console.log('📊 正在初始化数据库...');
     await dbAdapter.initialize();
     console.log('✅ 数据库连接成功');
 
@@ -4800,9 +4826,8 @@ async function startServer() {
 
       // 启动后预安装核心插件，保证首次可用
       try {
-        console.log('⏭️ 跳过核心插件预安装（调试模式）');
-        // await ensureCorePluginsInstalled();
-        // console.log('✅ 核心插件已预安装/激活');
+        await ensureCorePluginsInstalled();
+        console.log('✅ 核心插件已预安装/激活');
       } catch (e) {
         console.warn('核心插件预安装失败', e.message);
       }

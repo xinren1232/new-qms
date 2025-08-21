@@ -503,7 +503,7 @@ app.post('/api/chat/send',
     let modelConfig = currentConfig;
 
     // 如果请求中指定了模型，查找对应的配置
-    if (model && model !== 'deepseek-chat') {
+    if (model) {
       // 首先尝试直接匹配配置key
       if (AI_CONFIGS[model]) {
         modelConfig = AI_CONFIGS[model];

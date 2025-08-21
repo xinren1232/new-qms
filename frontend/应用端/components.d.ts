@@ -76,6 +76,7 @@ declare module 'vue' {
     Search: typeof import('./src/components/ConfigDriven/Search.vue')['default']
     ShortcutHelp: typeof import('./src/components/ShortcutHelp.vue')['default']
     SmartRecommendations: typeof import('./src/components/SmartRecommendations.vue')['default']
+    SystemHealthMonitor: typeof import('./src/components/SystemHealthMonitor.vue')['default']
     Table: typeof import('./src/components/ConfigDriven/Table.vue')['default']
     ThemeSwitcher: typeof import('./src/components/ThemeSwitcher.vue')['default']
     Toolbar: typeof import('./src/components/ConfigDriven/Toolbar.vue')['default']

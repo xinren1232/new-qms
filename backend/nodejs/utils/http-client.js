@@ -297,7 +297,7 @@ class HttpClient extends EventEmitter {
    */
   async aiRequest(url, data, config = {}) {
     const aiConfig = {
-      timeout: 60000, // AI请求60秒超时
+      timeout: 0, // 解除AI请求超时限制，支持长时间响应
       ...config,
       headers: {
         'Content-Type': 'application/json',

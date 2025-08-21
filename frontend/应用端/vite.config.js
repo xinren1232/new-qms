@@ -85,7 +85,7 @@ export default defineConfig({
       '/api/chat': {
         target: 'http://localhost:3004',
         changeOrigin: true,
-        timeout: 30000,
+        timeout: 0, // 解除超时限制，支持长时间AI响应
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {
             console.log('聊天服务代理错误:', err.message);
@@ -108,8 +108,21 @@ export default defineConfig({
           });
         }
       },
-      '/api/ai': {
+      '/api/ai/models': {
         target: 'http://localhost:3003',
+        changeOrigin: true,
+        timeout: 30000,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('AI模型配置代理错误:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('AI模型配置代理请求:', req.method, req.url);
+          });
+        }
+      },
+      '/api/ai': {
+        target: 'http://localhost:3005',
         changeOrigin: true,
         timeout: 30000,
         configure: (proxy, options) => {
@@ -118,6 +131,32 @@ export default defineConfig({
           });
           proxy.on('proxyReq', (proxyReq, req, res) => {
             console.log('AI服务代理请求:', req.method, req.url);
+          });
+        }
+      },
+      '/api/workflows': {
+        target: 'http://localhost:3005',
+        changeOrigin: true,
+        timeout: 30000,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('工作流服务代理错误:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('工作流服务代理请求:', req.method, req.url);
+          });
+        }
+      },
+      '/api/traces': {
+        target: 'http://localhost:3005',
+        changeOrigin: true,
+        timeout: 30000,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('Traces代理错误:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('Traces代理请求:', req.method, req.url);
           });
         }
       },

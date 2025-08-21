@@ -37,21 +37,17 @@
           <el-tabs v-model="dataInputTab">
             <el-tab-pane label="示例数据" name="sample">
               <!-- 预制测试文件选择 - 优化版本 -->
-              <div class="test-file-section">
+              <div class="test-file-section" v-loading="testFilesLoading">
                 <h5>📁 预制测试文件 ({{ availableTestFiles.length }} 个可用)</h5>
-                <!-- 调试信息 -->
-                <div style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px;">
-                  <strong>调试信息:</strong><br>
-                  hasAvailableTestFiles: {{ hasAvailableTestFiles }}<br>
-                  availableTestFiles.length: {{ availableTestFiles.length }}<br>
-                  availableTestFiles: {{ JSON.stringify(availableTestFiles, null, 2) }}
-                </div>
+
                 <div v-if="hasAvailableTestFiles" class="test-file-selector">
                   <el-select
                     v-model="selectedTestFile"
                     placeholder="选择测试文件"
                     @change="onTestFileChange"
                     style="width: 350px; margin-right: 10px;"
+                    filterable
+                    clearable
                   >
                     <el-option
                       v-for="file in availableTestFiles"
@@ -257,7 +253,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { executePlugin as apiExecutePlugin } from '@/api/coze-studio'
 import ValidationResult from './ValidationResult.vue'
@@ -293,6 +289,7 @@ const selectedTestFile = ref('')
 const selectedTestFileInfo = ref(null)
 const availableTestFiles = ref([])
 const testFileIndex = ref(null)
+const testFilesLoading = ref(false)
 
 // 插件信息配置
 const pluginConfigs = {
@@ -1054,6 +1051,7 @@ const loadSampleData = (sample) => {
 // 测试文件相关方法
 const loadTestFileIndex = async () => {
   try {
+    testFilesLoading.value = true
     const response = await fetch('/plugin-test-files/file_index.json')
     if (response.ok) {
       testFileIndex.value = await response.json()
@@ -1062,6 +1060,8 @@ const loadTestFileIndex = async () => {
     }
   } catch (error) {
     console.warn('加载测试文件索引失败:', error)
+  } finally {
+    testFilesLoading.value = false
   }
 }
 
@@ -1379,6 +1379,10 @@ onMounted(() => {
 
   // 加载测试文件索引
   loadTestFileIndex()
+
+  // 观察插件ID与文件索引变化，刷新可用测试文件
+  watch(() => props.pluginId, () => updateAvailableTestFiles())
+  watch(testFileIndex, () => updateAvailableTestFiles())
 })
 </script>
 

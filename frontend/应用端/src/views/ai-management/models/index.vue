@@ -164,7 +164,7 @@
             <div class="model-info">
               <div class="model-avatar">
                 <img v-if="model.avatar" :src="model.avatar" :alt="model.name" />
-                <el-icon v-else><Robot /></el-icon>
+                <el-icon v-else><Cpu /></el-icon>
               </div>
               <div class="model-details">
                 <h3>{{ model.name }}</h3>

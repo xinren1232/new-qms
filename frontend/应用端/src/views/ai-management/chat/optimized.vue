@@ -1254,12 +1254,28 @@ const nextToolPage = () => {
 
 
 
-const invokeTool = (tool) => {
+const invokeTool = async (tool) => {
   if (tool.status !== 'available') {
     ElMessage.info(`${tool.name} 正在开发中，敬请期待`)
     return
   }
 
+  // 文档类工具：如已选择文件，直接走文件解析流程
+  const isDocTool = tool.category === 'document' || ['document-generator','procedure-writer'].includes(tool.id)
+  if (isDocTool && (hasDocumentFiles.value || hasImageFiles.value)) {
+    try {
+      if (!currentConversationId.value) currentConversationId.value = 'conv_' + Date.now()
+      await processUploadedFiles(uploadedFiles.value, inputMessage.value)
+      // 解析走完，这里不发送纯文本消息
+      return
+    } catch (e) {
+      console.error('工具触发解析失败:', e)
+      ElMessage.error('解析失败：' + (e.message || '未知错误'))
+      return
+    }
+  }
+
+  // 其他工具按原逻辑注入提示语
   switch (tool.id) {
     case 'quality-analysis':
       inputMessage.value = '请帮我进行质量数据分析，我需要使用SPC控制图分析生产过程的稳定性'
@@ -1329,6 +1345,10 @@ const sendMessage = async () => {
 
     // 如果包含文件，则优先走“插件解析”流程并直接返回
     if (currentFiles.length > 0) {
+      // 确保会话ID存在，避免traces API返回400错误
+      if (!currentConversationId.value) {
+        currentConversationId.value = 'conv_' + Date.now()
+      }
       await processUploadedFiles(currentFiles, currentInput)
       // 精确移除本次的加载消息（按对象引用定位）
       const idx = messages.value.indexOf(loadingMessage)
@@ -1360,47 +1380,23 @@ const sendMessage = async () => {
     // TODO: 如存在后端 agentId 适配，可按需传递
 
 
-async function processUploadedFiles(files, userPrompt){
-  // 仅处理首个文件，后续可扩展批量
-  const f = files[0]
-  const toBase64 = (file)=> new Promise((resolve,reject)=>{
-    const reader = new FileReader()
-    reader.onload = ()=> resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(file.file)
-  })
-  const base64 = await toBase64(f)
+// 删除重复的processUploadedFiles函数定义，统一使用下方的插件系统版本
 
-  // 调用 Coze Studio 文档解析工作流
-  const payload = {
-    input: {
-      file: { name: f.name, type: f.type, base64 },
-      query: userPrompt || ''
-    },
-    options: { summarize: true, stats: true, ingest_kb: false }
+  function inferFormatFromName(name=''){
+    const n = String(name).toLowerCase()
+    if(n.endsWith('.pdf')) return 'pdf'
+    if(n.endsWith('.xlsx')||n.endsWith('.xls')) return 'xlsx'
+    if(n.endsWith('.csv')) return 'csv'
+    if(n.endsWith('.json')) return 'json'
+    if(n.endsWith('.xml')) return 'xml'
+    if(/\.(png|jpg|jpeg|bmp|gif|webp)$/.test(n)) return 'image'
+    return 'text'
   }
-  const resp = await cozeStudioAPI.executeDocumentParsingWorkflow(payload)
-  const ok = resp?.success !== false
-  if(!ok){ throw new Error(resp?.message || '解析失败') }
-  const parsed = resp?.data?.parsed || resp?.data || resp
 
-  // 将解析结果注入一条 assistant 消息
-  messages.value.push({
-    role: 'assistant',
-    content: '已完成文档解析。',
-    parsed,
-    timestamp: new Date(),
-    model_info: { provider: 'Document-Workflow' },
-    response_time: 0
-  })
+  // 删除未使用的waitParsingExecution函数
 
-  // 更新右侧执行流程看板
-  if(Array.isArray(resp?.data?.steps)){
-    executionSteps.value = resp.data.steps.map((s,i)=>({ index:i+1, title:s.title, status:'completed', logs:[JSON.stringify(s.data)] }))
-    executionStats.value.completedSteps = resp.data.steps.length
-    executionStats.value.totalSteps = resp.data.steps.length
-  }
-}
+
+
 
     const response = await sendChatMessage(requestData)
 
@@ -1800,6 +1796,11 @@ const summarizePluginResult = (pluginId, data) => {
 }
 
 const processUploadedFiles = async (files, userInput) => {
+  // 确保会话ID存在，避免traces API返回400错误
+  if (!currentConversationId.value) {
+    currentConversationId.value = 'conv_' + Date.now()
+  }
+
   for (const f of files) {
     // Step 0: 文件类别识别
     startStep(0, [`${f.name} (${f.type || 'unknown'})`])
@@ -1942,6 +1943,8 @@ const uploadCaseExcel = async ({ file }) => {
     }
   } catch (e) {
     ElMessage.error('案例导入失败：' + (e.message || '网络错误'))
+  }
+}
 
 // 案例指导执行流程（右侧看板专用）
 const initGuidanceFlow = (queryText) => {
@@ -1963,10 +1966,6 @@ const markStep = (idx, status, details = []) => {
     executionStats.value.totalDuration += d
     if (status !== 'error') executionStats.value.completedSteps++
     executionSteps.value[idx].status = status === 'running' ? 'completed' : status
-  }
-}
-
-    ElMessage.error('案例导入失败：' + (e.message || '网络错误'))
   }
 }
 
@@ -2003,7 +2002,10 @@ const handleCaseGuidance = async () => {
     } else {
       ElMessage.error('经验指导生成失败')
     }
-
+  } catch (error) {
+    ElMessage.error('经验指导失败：' + (error.message || '网络错误'))
+  }
+}
 
 // 图像理解（当消息包含图片时）
 const handleVisionAnalysis = async () => {
@@ -2014,46 +2016,52 @@ const handleVisionAnalysis = async () => {
     }
     // 仅取第一张图做示例
     const firstImg = uploadedFiles.value.find(f => f.type.startsWith('image/'))
+    if (!firstImg) {
+      ElMessage.error('未找到图片文件')
+      return
+    }
+
+    // 获取实际的文件对象
+    const actualFile = firstImg.file || firstImg.raw || firstImg
+    if (!actualFile || !(actualFile instanceof File || actualFile instanceof Blob)) {
+      ElMessage.error('无效的图片文件对象')
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = async () => {
-      const dataUrl = reader.result // data:image/...;base64,....
-      // 调用后端视觉接口（我们已兼容 dataURL/base64/URL）
-      initGuidanceFlow('图片异常识别')
-      let done = markStep(0, 'running', ['图片已加载'])
-      done()
-      done = markStep(1, 'running', ['准备调用视觉模型'])
-      const visionRes = await chatWithVision({ message: '分析图片中的质量异常', image_data_url: String(dataUrl) })
-      const visionText = visionRes?.data?.response || '未识别到明显异常，请补充描述'
-      done()
-      done = markStep(2, 'running')
-      const cat = /来料|供应商|IQC/.test(visionText) ? 'incoming' : 'manufacturing'
-      const res = await getCaseGuidance({ query: visionText, category: cat, limit: 8 })
-      const g = res.data?.guidance
-      done()
-      messages.value.push({
-        role: 'assistant',
-        content: `【图片分析结果】\n${visionText}\n\n【历史案例经验指导】\n${g?.summary || '未找到相关案例'}\n\n排查清单：\n- ${(g?.checklist||[]).join('\n- ')}`,
-        timestamp: new Date(),
-        model_info: { provider: 'Vision+CaseGuidance' }
-      })
-      scrollToBottom()
+      try {
+        const dataUrl = reader.result // data:image/...;base64,....
+        // 调用后端视觉接口（我们已兼容 dataURL/base64/URL）
+        initGuidanceFlow('图片异常识别')
+        let done = markStep(0, 'running', ['图片已加载'])
+        done()
+        done = markStep(1, 'running', ['准备调用视觉模型'])
+        const visionRes = await chatWithVision({ message: '分析图片中的质量异常', image_data_url: String(dataUrl) })
+        const visionText = visionRes?.data?.response || '未识别到明显异常，请补充描述'
+        done()
+        done = markStep(2, 'running')
+        const cat = /来料|供应商|IQC/.test(visionText) ? 'incoming' : 'manufacturing'
+        const res = await getCaseGuidance({ query: visionText, category: cat, limit: 8 })
+        const g = res.data?.guidance
+        done()
+        messages.value.push({
+          role: 'assistant',
+          content: `【图片分析结果】\n${visionText}\n\n【历史案例经验指导】\n${g?.summary || '未找到相关案例'}\n\n排查清单：\n- ${(g?.checklist||[]).join('\n- ')}`,
+          timestamp: new Date(),
+          model_info: { provider: 'Vision+CaseGuidance' }
+        })
+        scrollToBottom()
+      } catch (error) {
+        ElMessage.error('图像分析失败：' + (error.message || '网络错误'))
+      }
     }
-    reader.readAsDataURL(firstImg.file)
+    reader.onerror = () => {
+      ElMessage.error('文件读取失败')
+    }
+    reader.readAsDataURL(actualFile)
   } catch (e) {
     ElMessage.error('图像理解失败：' + (e.message || '网络错误'))
-  }
-}
-
-    messages.value.push({
-      role: 'assistant',
-      content: `【历史案例经验指导】\n${g?.summary || '未找到相关案例'}\n\n排查清单：\n- ${(g?.checklist||[]).join('\n- ')}\n\n相似案例：\n${topCases.map((c,i)=>`${i+1}. ${c.title}｜${c.tags||''}`).join('\n')}`,
-      timestamp: new Date(),
-      model_info: { provider: 'CaseGuidance' }
-    })
-
-    scrollToBottom()
-  } catch (e) {
-    ElMessage.error('获取案例指导失败：' + (e.message || '网络错误'))
   }
 }
 

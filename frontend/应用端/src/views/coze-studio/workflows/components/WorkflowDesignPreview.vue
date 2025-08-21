@@ -14,32 +14,58 @@
 
     <div class="content">
       <!-- 左侧：只读可视化画布 -->
-      <div class="canvas-wrapper" ref="canvasRef">
+      <div class="canvas-wrapper" ref="canvasRef" :class="{ dragging }"
+           @wheel.prevent="onWheel"
+           @mousedown="onMouseDown">
         <div class="canvas" :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }">
-          <!-- 节点 -->
-          <div
-            v-for="node in positionedNodes"
-            :key="node.id"
-            class="node"
-            :class="`node-${node.type}`"
-            :style="{ left: node.x + 'px', top: node.y + 'px' }"
-          >
-            <div class="node-header">
-              <div class="node-icon"><el-icon><component :is="getNodeIcon(node.type)" /></el-icon></div>
-              <div class="node-title">{{ node.name }}</div>
-              <el-tag size="small" type="info">{{ getNodeTypeName(node.type) }}</el-tag>
+          <!-- 视口：负责平移/缩放 -->
+          <div class="viewport" :style="viewportStyle">
+            <!-- 节点 -->
+            <div
+              v-for="node in positionedNodes"
+              :key="node.id"
+              class="node"
+              :class="[`node-${node.type}`, { 'node-hover': hoveredNodeId === node.id }]"
+              :style="{ left: node.x + 'px', top: node.y + 'px' }"
+              @mouseenter="hoveredNodeId = node.id"
+              @mouseleave="hoveredNodeId = null"
+            >
+              <div class="node-header">
+                <div class="node-icon"><el-icon><component :is="getNodeIcon(node.type)" /></el-icon></div>
+                <div class="node-title">{{ node.name }}</div>
+                <el-tag size="small" type="info">{{ getNodeTypeName(node.type) }}</el-tag>
+              </div>
             </div>
+
+            <!-- 连接线 -->
+            <svg class="edges">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#409EFF" />
+                </marker>
+              </defs>
+              <g v-for="(edge, i) in (workflow?.connections || [])" :key="i">
+                <path
+                  :id="'edge-path-' + i"
+                  :d="getConnectionPath(edge)"
+                  class="edge"
+                  :class="{ 'edge-highlight': isEdgeRelated(edge, hoveredNodeId) }"
+                  marker-end="url(#arrow)"
+                />
+                <text v-if="showEdgeLabels && edge.label" class="edge-label">
+                  <textPath :href="'#edge-path-' + i" startOffset="50%" text-anchor="middle">{{ edge.label }}</textPath>
+                </text>
+              </g>
+            </svg>
           </div>
 
-          <!-- 连接线 -->
-          <svg class="edges">
-            <path
-              v-for="(edge, i) in (workflow?.connections || [])"
-              :key="i"
-              :d="getConnectionPath(edge)"
-              class="edge"
-            />
-          </svg>
+          <!-- 画布工具条 -->
+          <div class="canvas-toolbar">
+            <el-button size="small" @click.stop="zoomOut">-</el-button>
+            <el-button size="small" @click.stop="resetView">100%</el-button>
+            <el-button size="small" @click.stop="fitToView">适配</el-button>
+            <el-button size="small" @click.stop="zoomIn">+</el-button>
+          </div>
         </div>
       </div>
 
@@ -65,16 +91,102 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { Cpu, Connection, Document, VideoPlay } from '@element-plus/icons-vue'
 
 const props = defineProps({
-  workflow: { type: Object, default: () => ({}) }
+  workflow: { type: Object, default: () => ({}) },
+  autoFit: { type: Boolean, default: true }
 })
 
 const canvasRef = ref(null)
 const canvasWidth = ref(1200)
 const canvasHeight = ref(520)
+
+// 悬停高亮
+const hoveredNodeId = ref(null)
+const showEdgeLabels = ref(true)
+function isEdgeRelated(edge, nodeId){
+  if(!nodeId) return false
+  return edge.from === nodeId || edge.to === nodeId
+}
+
+// 视口平移/缩放
+const scale = ref(1)
+const translate = ref({ x: 0, y: 0 })
+const viewportStyle = computed(() => ({
+  transform: `translate(${translate.value.x}px, ${translate.value.y}px) scale(${scale.value})`,
+  transformOrigin: '0 0'
+}))
+
+function fitToView(){
+  // 计算节点边界，按容器大小自适应
+  const nodes = positionedNodes.value
+  const wrapper = canvasRef.value
+  if(!nodes.length || !wrapper) return resetView()
+  const minX = Math.min(...nodes.map(n=>n.x))
+  const minY = Math.min(...nodes.map(n=>n.y))
+  const maxX = Math.max(...nodes.map(n=>n.x+170))
+  const maxY = Math.max(...nodes.map(n=>n.y+80))
+  const bboxW = maxX - minX
+  const bboxH = maxY - minY
+  const rect = wrapper.getBoundingClientRect()
+  const pad = 40
+  const s = Math.min((rect.width - pad) / bboxW, (rect.height - pad) / bboxH)
+  scale.value = clamp(s, 0.4, 2.5)
+  // 居中显示
+  const viewW = rect.width
+  const viewH = rect.height
+  translate.value = {
+    x: (viewW - bboxW * scale.value)/2 - minX*scale.value,
+    y: (viewH - bboxH * scale.value)/2 - minY*scale.value
+  }
+}
+
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)) }
+function zoom(delta, center){
+  const prev = scale.value
+  const next = clamp(prev * (1 + delta), 0.4, 2.5)
+  if (!center) {
+    const rect = canvasRef.value?.getBoundingClientRect?.()
+    center = rect ? { x: rect.width/2, y: rect.height/2 } : { x: 0, y: 0 }
+  }
+  // 以中心点为基准缩放，保持锚点不偏移
+  translate.value = {
+    x: center.x - (next/prev) * (center.x - translate.value.x),
+    y: center.y - (next/prev) * (center.y - translate.value.y)
+  }
+  scale.value = next
+}
+function zoomIn(){ zoom(0.1) }
+function zoomOut(){ zoom(-0.1) }
+function resetView(){ scale.value = 1; translate.value = { x: 0, y: 0 } }
+
+let dragging = false, start = {x:0,y:0}, startT = {x:0,y:0}
+function onMouseDown(e){
+  if(e.button!==0) return
+  dragging = true
+  start = {x:e.clientX,y:e.clientY}
+  startT = {...translate.value}
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+function onMouseMove(e){
+  if(!dragging) return
+  translate.value = { x: startT.x + (e.clientX - start.x), y: startT.y + (e.clientY - start.y) }
+}
+function onMouseUp(){
+  dragging = false
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
+}
+function onWheel(e){
+  const rect = canvasRef.value?.getBoundingClientRect?.()
+  const center = rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : { x: 0, y: 0 }
+  zoom(e.deltaY < 0 ? 0.12 : -0.12, center)
+}
+
+onBeforeUnmount(()=>{ window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp) })
 
 const sceneLabel = computed(() => ({
   'data-processing': '数据处理',
@@ -148,6 +260,8 @@ onMounted(() => {
     canvasWidth.value = Math.max(800, Math.max(...xs) + 240)
     canvasHeight.value = Math.max(320, Math.max(...ys) + 160)
   }
+  // 自动适配
+  if (props.autoFit) setTimeout(() => fitToView(), 0)
 })
 </script>
 
@@ -157,13 +271,27 @@ onMounted(() => {
 .preview-header .title{display:flex;align-items:center;gap:8px}
 .preview-header .scene{margin-left:8px}
 .content{display:flex;gap:16px;min-height:420px}
-.canvas-wrapper{flex:1;overflow:auto;background:var(--el-fill-color-lighter);border:1px solid var(--el-border-color-lighter);border-radius:8px}
+.canvas-wrapper{flex:1;overflow:hidden;background:var(--el-fill-color-lighter);border:1px solid var(--el-border-color-lighter);border-radius:8px;position:relative;cursor:grab}
+.canvas-wrapper.dragging{cursor:grabbing}
 .canvas{position:relative}
-.node{position:absolute;width:160px;background:white;border:1px solid var(--el-border-color-lighter);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
-.node-header{display:flex;align-items:center;gap:8px;padding:8px 10px}
+.viewport{position:relative;transform-origin:0 0}
+.canvas-toolbar{position:absolute;right:12px;bottom:12px;display:flex;gap:6px}
+.node{position:absolute;width:170px;background:white;border:1px solid var(--el-border-color-lighter);border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.06);transition:box-shadow .2s ease, transform .2s ease}
+.node:hover,.node-hover{box-shadow:0 6px 16px rgba(0,0,0,0.12);transform:translateY(-1px)}
+/* 节点类型主题色 */
+.node-start .node-header{border-left:4px solid #67C23A}
+.node-ai .node-header{border-left:4px solid #E6A23C}
+.node-condition .node-header{border-left:4px solid #909399}
+.node-http .node-header{border-left:4px solid #409EFF}
+.node-database .node-header{border-left:4px solid #409EFF}
+.node-document .node-header{border-left:4px solid #67C23A}
+.node-end .node-header{border-left:4px solid #F56C6C}
+.node-header{display:flex;align-items:center;gap:8px;padding:10px 12px}
 .node-title{font-weight:600;flex:1}
 .edges{position:absolute;inset:0;pointer-events:none}
-.edge{fill:none;stroke:#409EFF;stroke-width:2}
+.edge{fill:none;stroke:#409EFF;stroke-width:2;opacity:.6}
+.edge.edge-highlight{stroke:#FF7E33;opacity:1}
+.edge-label{font-size:12px;fill:#606266}
 .summary{width:300px;border:1px solid var(--el-border-color-lighter);border-radius:8px;padding:12px;background:white}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .meta-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}

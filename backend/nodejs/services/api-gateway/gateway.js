@@ -37,7 +37,7 @@ const services = {
   chat: {
     target: 'http://localhost:3004',
     pathRewrite: { '^/api/chat': '' },
-    timeout: 30000,
+    timeout: 0, // 解除超时限制，支持长时间AI响应
     retries: 3
   },
   // 配置服务

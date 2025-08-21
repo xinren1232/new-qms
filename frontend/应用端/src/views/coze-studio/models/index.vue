@@ -598,7 +598,7 @@ const fetchModels = async () => {
     // 首先尝试从配置中心API获取数据
     let response = null
     try {
-      response = await axios.get('http://localhost:3003/api/ai/models')
+      response = await axios.get('/api/ai/models')
       console.log('✅ API响应成功:', response.data)
     } catch (apiError) {
       console.warn('⚠️ API调用失败，使用模拟数据:', apiError.message)
